@@ -1,6 +1,8 @@
+![tidevice](assets/tidevice-logo.png)
 # tidevice
 
-![tidevice](assets/tidevice-logo.png)
+[![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
 [中文文档](README_CN.md)
 

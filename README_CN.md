@@ -1,5 +1,8 @@
-## tidevice
 ![tidevice](assets/tidevice-logo.png)
+## tidevice
+
+[![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
 该工具能够用于与iOS设备进行通信, 提供以下功能
 
