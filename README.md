@@ -1,5 +1,7 @@
 # tidevice
 
+![tidevice](assets/tidevice-logo.png)
+
 [中文文档](README_CN.md)
 
 Command line tool to communicate with iOS device, support the following functions
@@ -55,8 +57,8 @@ $ tidevice reboot
 
 $ tidevice screenshot screenshot.jpg
 
-# collect performance (not ready yet)
-$ tidevice perf -o fps,mem,cpu -B com.example.demo
+# TODO(ssx): collect performance
+# $ tidevice perf -o fps,mem,cpu -B com.example.demo
 ```
 
 ## DEVELOP
@@ -64,6 +66,7 @@ See [DEVELOP](DEVELOP.md)
 
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>
+- <https://github.com/facebook/idb>
 - Python implement of libimobiledevice: <https://github.com/iOSForensics/pymobiledevice>
 - Apple Device Images: <https://github.com/iGhibli/iOS-DeviceSupport>
 - <https://github.com/troybowman/dtxmsg>

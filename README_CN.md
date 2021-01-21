@@ -1,4 +1,6 @@
 ## tidevice
+![tidevice](assets/tidevice-logo.png)
+
 该工具能够用于与iOS设备进行通信, 提供以下功能
 
 - ipa包的安装和卸载
@@ -58,12 +60,22 @@ $ tidevice reboot
 # 截图
 $ tidevice screenshot screenshot.jpg
 
-# 性能采集
-$ tidevice perf -o fps,mem,cpu -B com.example.demo
+# 性能采集 (TODO)
+# $ tidevice perf -o fps,mem,cpu -B com.example.demo
 ```
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
+
+## Thanks
+- C implementation <https://github.com/libimobiledevice>
+- <https://github.com/facebook/idb>
+- Python implement of libimobiledevice: <https://github.com/iOSForensics/pymobiledevice>
+- Apple Device Images: <https://github.com/iGhibli/iOS-DeviceSupport>
+- <https://github.com/troybowman/dtxmsg>
+- <https://github.com/troybowman/ios_instruments_client>
+- Binary of libimobiledevice for Windows <http://docs.quamotion.mobi/docs/imobiledevice/>
+- [使用纯 python 实现 Instruments 协议，跨平台 (win,mac,linux) 获取 iOS 性能数据](https://testerhome.com/topics/27159)
 
 ## LICENSE
 [MIT](LICENSE)
