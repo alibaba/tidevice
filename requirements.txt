@@ -1,0 +1,16 @@
+# requirements.txt
+# Examples: https://pip.pypa.io/en/stable/reference/pip_install/#example-requirements-file
+
+# requests
+# requests==2.22.0
+# requests~=2.22.0
+# requests>=2.0.0,<3.0.0
+# requests; python_version >= '3.6'
+# requests; sys_platform == 'win32'
+
+cached_property
+logzero
+Pillow
+requests
+colored
+packaging
