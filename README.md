@@ -47,7 +47,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 
 ### Other
 ```bash
-# mount developer image
+# mount developer image (need more test)
 $ tidevice developer
 
 # reboot device
@@ -61,6 +61,15 @@ $ tidevice perf -o fps,mem,cpu -B com.example.demo
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
+
+## Thanks
+- C implementation <https://github.com/libimobiledevice>
+- Python implement of libimobiledevice: <https://github.com/iOSForensics/pymobiledevice>
+- Apple Device Images: <https://github.com/iGhibli/iOS-DeviceSupport>
+- <https://github.com/troybowman/dtxmsg>
+- <https://github.com/troybowman/ios_instruments_client>
+- Binary of libimobiledevice for Windows <http://docs.quamotion.mobi/docs/imobiledevice/>
+- [使用纯 python 实现 Instruments 协议，跨平台 (win,mac,linux) 获取 iOS 性能数据](https://testerhome.com/topics/27159)
 
 ## LICENSE
 [MIT](LICENSE.md)
