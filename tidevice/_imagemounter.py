@@ -2,6 +2,7 @@
 #
 
 import os
+import typing
 import shutil
 from typing import List
 
@@ -35,17 +36,31 @@ class ImageMounter(PlistSocket):
         if 'Error' in ret:
             raise MuxError(ret['Error'])
 
-    def mount(self, image_path: str, image_signature: str, image_type="Developer"):
+    def mount(self,
+                image_path: str,
+                image_signature_path: str):
+        """ Mount developer disk image from local files """
         assert os.path.isfile(image_path)
-        assert os.path.isfile(image_signature)
-
-        with open(image_signature, 'rb') as f:
+        assert os.path.isfile(image_signature_path)
+        
+        with open(image_signature_path, 'rb') as f:
             signature_content = f.read()
+        
+        image_size = os.path.getsize(image_path)
+
+        with open(image_path, "rb") as image_reader:
+            return self.mount_fileobj(image_reader, image_size, signature_content)
+        
+    def mount_fileobj(self,
+                image_reader: typing.IO,
+                image_size: int,
+                signature_content: bytes,
+                image_type: str = "Developer"):
 
         ret = self.send_recv_packet({
             "Command": "ReceiveBytes",
             "ImageSignature": signature_content,
-            "ImageSize": os.path.getsize(image_path),
+            "ImageSize": image_size,
             "ImageType": image_type,
         })
         self._check_error(ret)
@@ -54,12 +69,12 @@ class ImageMounter(PlistSocket):
         # Send data through SSL
         logger.info("Pushing DeveloperDiskImage.dmg")
         chunk_size = 1<<14
-        with open(image_path, "rb") as src:
-            while True:
-                chunk = src.read(chunk_size)
-                if not chunk:
-                    break
-                self.sendall(chunk)
+
+        while True:
+            chunk = image_reader.read(chunk_size)
+            if not chunk:
+                break
+            self.sendall(chunk)
 
         ret = self.recv_packet()
         self._check_error(ret)

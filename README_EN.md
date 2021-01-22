@@ -1,69 +1,80 @@
 ![tidevice](assets/tidevice-logo.png)
-## tidevice
+# tidevice
 
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
-该工具能够用于与iOS设备进行通信, 提供以下功能
+[中文文档](README_CN.md)
 
-- ipa包的安装和卸载
-- 根据bundleID 启动和停止应用
-- 列出安装应用信息
-- 获取指定应用性能(CPU,MEM,FPS)
-- 截图
-- 模拟Xcode运行XCTest，如启动WebDriverAgent测试
-- 其他
+Command line tool to communicate with iOS device, support the following functions
 
-## 安装
+- ipa install and uninstall
+- launch and kill app
+- list installed app info
+- retrieve performance data
+- screenshot
+- simulate run xctest, eg: WebDriverAgent
+- other
+
+## Install
 ```bash
 pip3 install -U tidevice
 ```
 
-## 使用
+## Usage
 
-### 查看版本号
+### Show version number
 ```bash
 $ tidevice version
 0.1.0
 ```
 
-### 应用管理
+### List connected devices
 ```bash
-# 安装应用
+$ tidevice list
+List of apple devices attached
+00008030-001A35E40212345678 codeskyblue的iPhoneSE
+
+$ tidevice list --json
+[
+    {
+        "udid": "00008030-001A35E40212345678",
+        "name": "codeskyblue的iPhoneSE"
+    }
+]
+```
+
+### App management
+```bash
 $ tidevice install example.ipa
 $ tidevice install https://example.org/example.ipa
 
-# 卸载应用
 $ tidevice uninstall com.example.demo
 
-# 启动应用
 $ tidevice launch com.example.demo
 
-# 停止应用
 $ tidevice kill com.example.demo
 
-# 查看已安装应用
+# show installed app list
 $ tidevice applist
 ```
 
-### 运行XCTest
+### Run XCTest
 ```bash
-# 运行XCTEST
 $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 ```
 
-### 其他常用
+### Other
 ```bash
-# 挂载开发者镜像
+# mount developer image (need more test)
 $ tidevice developer
 
-# 重启
+# reboot device
 $ tidevice reboot
 
-# 截图
 $ tidevice screenshot screenshot.jpg
 
-# 性能采集 (TODO)
+# TODO(ssx): collect performance
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
 ```
 
@@ -81,4 +92,4 @@ See [DEVELOP](DEVELOP.md)
 - [使用纯 python 实现 Instruments 协议，跨平台 (win,mac,linux) 获取 iOS 性能数据](https://testerhome.com/topics/27159)
 
 ## LICENSE
-[MIT](LICENSE)
+[MIT](LICENSE.md)

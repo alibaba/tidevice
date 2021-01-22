@@ -28,7 +28,7 @@ from logzero import setup_logger
 
 from ._device import Device
 from ._ipautil import IPAReader
-from ._utils import get_app_dir, get_app_file, get_binary_by_name, is_atty
+from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._usbmux import Usbmux
 from ._version import __version__
 from .exceptions import MuxError, ServiceError
@@ -73,7 +73,7 @@ def _udid2device(udid: Optional[str] = None) -> Device:
     return Device(_udid, um)
 
 
-def cmd_devices(args: argparse.Namespace):
+def cmd_list(args: argparse.Namespace):
     if not args.json and is_atty:
         print("List of apple devices attached", file=sys.stderr)
 
@@ -265,12 +265,45 @@ def cmd_kill(args: argparse.Namespace):
 
 def cmd_test(args: argparse.Namespace):
     print("Just test")
+    # files = os.listdir(path)
+    
+    d = _udid2device(args.udid)
+
+    # Here need device unlocked
+    # signatures = d.imagemounter.lookup()
+    # if signatures:
+    #     logger.info("DeveloperImage already mounted")
+    #     return
+    
+    product_version = d.get_value("ProductVersion")
+    logger.info("ProductVersion: %s", product_version)
+    major, minor = product_version.split(".")[:2]
+    version = major + "." + minor
+
+    device_support_paths = [
+        "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport", # Xcode
+        get_app_dir("DeviceSupport"),
+    ]
+    for _dir in device_support_paths:
+        logger.debug("Search developer disk image in Path:%r", _dir)
+        dimgdir = os.path.join(_dir, version)
+        if os.path.isdir(dimgdir):
+            d.imagemounter.mount(
+                os.path.join(dimgdir, "DeveloperDiskImage.dmg"),
+                os.path.join(dimgdir, "DeveloperDiskImage.dmg.signature"))
+            return
+        zippath = os.path.join(_dir, version+".zip")
+        if os.path.isfile(zippath):
+            # TODO
+            pass
+    else:
+        raise RuntimeError("DeveloperDiskImage nout found")
 
 
 _commands = [
     dict(action=cmd_version, command="version", help="show current version"),
-    dict(action=cmd_devices,
-         command="devices",
+    dict(action=cmd_list,
+         command="list",
          flags=[
              dict(args=['--json'],
                   action='store_true',
