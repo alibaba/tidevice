@@ -771,7 +771,7 @@ class BaseDevice():
             'USE_PORT': '',
         } # yapf: disable
 
-        if self.major_version() > 10:
+        if self.major_version() >= 11:
             app_env['DYLD_INSERT_LIBRARIES'] = '/Developer/usr/lib/libMainThreadChecker.dylib'
             app_env['OS_ACTIVITY_DT_MODE'] = 'YES'
 
@@ -877,8 +877,8 @@ class BaseDevice():
         x1_daemon_chan = x1.make_channel(
             'dtxproxy:XCTestManager_IDEInterface:XCTestManager_DaemonConnectionInterface'
         )
-        
-        if self.major_version() > 10:
+
+        if self.major_version() >= 11:
             identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
             aux = AUXMessageBuffer()
             aux.append_obj(XCODE_VERSION)
