@@ -878,17 +878,12 @@ class BaseDevice():
             'dtxproxy:XCTestManager_IDEInterface:XCTestManager_DaemonConnectionInterface'
         )
         
-        # Fix "it does not respond to the selector" error in iOS 10
-        identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
-        aux = AUXMessageBuffer()
-
-        if self.major_version() < 11:
-            identifier = '_IDE_initiateControlSessionForTestProcessID:protocolVersion:'
-            aux.append_obj(0)
-
-        aux.append_obj(XCODE_VERSION)
-        result = x1.call_message(x1_daemon_chan, identifier, aux)
-        logger.debug("result: %s", result)
+        if self.major_version() > 10:
+            identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
+            aux = AUXMessageBuffer()
+            aux.append_obj(XCODE_VERSION)
+            result = x1.call_message(x1_daemon_chan, identifier, aux)
+            logger.debug("result: %s", result)
         x1.register_callback(Event.FINISHED, lambda _: quit_event.set())
 
         ##
