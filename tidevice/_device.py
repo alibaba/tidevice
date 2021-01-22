@@ -760,7 +760,6 @@ class BaseDevice():
             'DYLD_FRAMEWORK_PATH': app_path + '/Frameworks:',
             'DYLD_LIBRARY_PATH': app_path + '/Frameworks',
             'NSUnbufferedIO': 'YES',
-            'OS_ACTIVITY_DT_MODE': 'YES',
             'SQLITE_ENABLE_THREAD_ASSERTIONS': '1',
             'WDA_PRODUCT_BUNDLE_IDENTIFIER': '',
             'XCTestConfigurationFilePath': xctestconfiguration_path,
@@ -768,11 +767,13 @@ class BaseDevice():
             # '__XCODE_BUILT_PRODUCTS_DIR_PATHS': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             # '__XPC_DYLD_FRAMEWORK_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             # '__XPC_DYLD_LIBRARY_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
-            # iOS 11
-            'DYLD_INSERT_LIBRARIES': '/Developer/usr/lib/libMainThreadChecker.dylib',
             'MJPEG_SERVER_PORT': '',
             'USE_PORT': '',
         } # yapf: disable
+
+        if self.major_version() > 10:
+            app_env['DYLD_INSERT_LIBRARIES'] = '/Developer/usr/lib/libMainThreadChecker.dylib'
+            app_env['OS_ACTIVITY_DT_MODE'] = 'YES'
 
         app_args = [
             '-NSTreatUnknownArgumentsAsOpen', 'NO',
@@ -822,7 +823,8 @@ class BaseDevice():
                 method, args = m.result
                 if method == 'outputReceived:fromProcess:atTime:':
                     logger.debug("Output: %s", args[0].strip())
-                    if "Using singleton test manager" in args[0]:
+                    # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
+                    if "ServerURLHere" in args[0]:
                         logger.info("WebDriverAgent start successfully")
 
         conn.register_callback(Event.NOTIFICATION, _callback)
@@ -875,8 +877,15 @@ class BaseDevice():
         x1_daemon_chan = x1.make_channel(
             'dtxproxy:XCTestManager_IDEInterface:XCTestManager_DaemonConnectionInterface'
         )
+        
+        # Fix "it does not respond to the selector" error in iOS 10
         identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
         aux = AUXMessageBuffer()
+
+        if self.major_version() < 11:
+            identifier = '_IDE_initiateControlSessionForTestProcessID:protocolVersion:'
+            aux.append_obj(0)
+
         aux.append_obj(XCODE_VERSION)
         result = x1.call_message(x1_daemon_chan, identifier, aux)
         logger.debug("result: %s", result)
