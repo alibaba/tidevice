@@ -31,7 +31,7 @@ from ._ipautil import IPAReader
 from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._usbmux import Usbmux
 from ._version import __version__
-from .exceptions import MuxError, ServiceError
+from .exceptions import MuxError, MuxServiceError, ServiceError
 
 from ._proto import MODELS, PROGRAM_NAME
 
@@ -263,17 +263,19 @@ def cmd_kill(args: argparse.Namespace):
             print("Kill pid:", pid)
 
 
-def cmd_test(args: argparse.Namespace):
-    print("Just test")
-    # files = os.listdir(path)
+def _check_mounted(d: Device) -> bool:
+    try:
+        d._unsafe_start_service("com.apple.mobile.diagnostics_relay")
+        return True
+    except MuxServiceError:
+        return False
     
-    d = _udid2device(args.udid)
 
-    # Here need device unlocked
-    # signatures = d.imagemounter.lookup()
-    # if signatures:
-    #     logger.info("DeveloperImage already mounted")
-    #     return
+def cmd_developer(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    if _check_mounted(d):
+        logger.info("DeveloperImage already mounted")
+        return
     
     product_version = d.get_value("ProductVersion")
     logger.info("ProductVersion: %s", product_version)
@@ -298,6 +300,20 @@ def cmd_test(args: argparse.Namespace):
             pass
     else:
         raise RuntimeError("DeveloperDiskImage nout found")
+
+def cmd_test(args: argparse.Namespace):
+    print("Just test")
+    # files = os.listdir(path)
+    
+    
+            
+    # Here need device unlocked
+    # signatures = d.imagemounter.lookup()
+    # if signatures:
+    #     logger.info("DeveloperImage already mounted")
+    #     return
+    
+    
 
 
 _commands = [
@@ -366,6 +382,7 @@ _commands = [
              dict(args=['arguments'], nargs='*', help='app arguments'),
          ],
          help="launch app with bundle_id"),
+    dict(action=cmd_developer, command="developer", help="mount developer image to device"),
     dict(action=cmd_kill,
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],
