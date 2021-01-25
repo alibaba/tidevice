@@ -13,7 +13,7 @@
 - 列出安装应用信息
 - 获取指定应用性能(CPU,MEM,FPS)
 - 截图
-- 模拟Xcode运行XCTest，如启动WebDriverAgent测试（改方法不依赖xcodebuild)
+- 模拟Xcode运行XCTest，如启动WebDriverAgent测试（此方法不依赖xcodebuild)
 - 其他
 
 ## 安装
@@ -71,7 +71,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 
 ### 其他常用
 ```bash
-# 挂载开发者镜像
+# 挂载开发者镜像 (需要更多的测试)
 $ tidevice developer
 
 # 重启
