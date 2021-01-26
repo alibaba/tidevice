@@ -57,8 +57,26 @@ class Sync(PlistSocket):
         self.sendall(fheader + data + payload)
 
     def _recv(self):
-        buf = self.recvall(FHeader.size)
+        # The received data might be in the following format (For example: on iOS 9.3 and iOS 9.2.1)
+        # '\x00\x00\x00\xea<?xml version="1.0" encoding="UTF-8"?>
+        # <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        # <plist version="1.0">
+        # <dict>
+        #     <key>Status</key>
+        #     <string>Complete</string>
+        # </dict>
+        # </plist>
+        # CFA6LPAA-...
+        # ...
+        # Therefore, we need to check the first 4 bytes
+        buf = self.recvall(4)
+        if bytes(buf) != AFC_MAGIC[:4]:
+            (plist_size, ) = struct.unpack(">I", buf)
+            self.recvall(plist_size) # Discard plist xml-content
+            buf = b""
+        buf = buf + self.recvall(FHeader.size - len(buf))
         fheader = FHeader.parse(buf)
+
         assert fheader.magic == AFC_MAGIC, fheader.magic
         assert fheader.length >= FHeader.size
 
