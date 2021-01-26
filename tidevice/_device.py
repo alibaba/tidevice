@@ -961,6 +961,12 @@ class BaseDevice():
             aux.append_obj(pid)
             result = x1.call_message(x1_daemon_chan, identifier, aux)
             logger.debug("result: %s", result)
+        elif self.major_version() <= 9:
+            identifier = '_IDE_initiateControlSessionForTestProcessID:'
+            aux = AUXMessageBuffer()
+            aux.append_obj(pid)
+            result = x1.call_message(x1_daemon_chan, identifier, aux)
+            logger.debug("result: %s", result)
         else:
             identifier = '_IDE_initiateControlSessionForTestProcessID:protocolVersion:'
             aux = AUXMessageBuffer()
@@ -968,6 +974,9 @@ class BaseDevice():
             aux.append_obj(XCODE_VERSION)
             result = x1.call_message(x1_daemon_chan, identifier, aux)
             logger.debug("result: %s", result)
+        
+        if "NSError" in str(result):
+            raise RuntimeError("Xcode Invocation Failed: {}".format(result))
 
         # wait for quit
         # on windows threading.Event.wait can't handle ctrl-c
