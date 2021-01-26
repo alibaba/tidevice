@@ -40,8 +40,8 @@ class ImageMounter(PlistSocket):
                 image_path: str,
                 image_signature_path: str):
         """ Mount developer disk image from local files """
-        assert os.path.isfile(image_path)
-        assert os.path.isfile(image_signature_path)
+        assert os.path.isfile(image_path), image_path
+        assert os.path.isfile(image_signature_path), image_signature_path
         
         with open(image_signature_path, 'rb') as f:
             signature_content = f.read()

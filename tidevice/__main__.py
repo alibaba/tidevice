@@ -263,6 +263,12 @@ def cmd_kill(args: argparse.Namespace):
             print("Kill pid:", pid)
 
 
+def cmd_system_info(args):
+    d = _udid2device(args.udid)
+    sinfo = d.instruments.system_info()
+    pprint(sinfo)
+
+
 def _check_mounted(d: Device) -> bool:
     try:
         d._unsafe_start_service("com.apple.mobile.diagnostics_relay")
@@ -334,6 +340,9 @@ _commands = [
                   help="output as json format")
          ],
          help="show device info"),
+    dict(action=cmd_system_info,
+         command="sysinfo",
+         help="show device system info"),
     dict(action=cmd_install,
          command="install",
          flags=[
