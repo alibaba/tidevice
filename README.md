@@ -1,65 +1,86 @@
 ![tidevice](assets/tidevice-logo.png)
-# tidevice
+## tidevice
 
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
-[中文文档](README_CN.md)
+[English](README_EN.md)
 
-Command line tool to communicate with iOS device, support the following functions
+该工具能够用于与iOS设备进行通信, 提供以下功能
 
-- ipa install and uninstall
-- launch and kill app
-- list installed app info
-- retrieve performance data
-- screenshot
-- simulate run xctest, eg: WebDriverAgent
-- other
+- ipa包的安装和卸载
+- 根据bundleID 启动和停止应用
+- 列出安装应用信息
+- 获取指定应用性能(CPU,MEM,FPS)
+- 截图
+- 模拟Xcode运行XCTest，如启动WebDriverAgent测试（此方法不依赖xcodebuild)
+- 其他
 
-## Install
+## 安装
 ```bash
 pip3 install -U tidevice
 ```
 
-## Usage
+## 使用
 
-### Show version number
+### 查看版本号
 ```bash
 $ tidevice version
 0.1.0
 ```
 
-### App management
+### 列出连接设备
 ```bash
+$ tidevice list
+List of apple devices attached
+00008030-001A35E40212345678 codeskyblue的iPhoneSE
+
+$ tidevice list --json
+[
+    {
+        "udid": "00008030-001A35E40212345678",
+        "name": "codeskyblue的iPhoneSE"
+    }
+]
+```
+
+### 应用管理
+```bash
+# 安装应用
 $ tidevice install example.ipa
 $ tidevice install https://example.org/example.ipa
 
+# 卸载应用
 $ tidevice uninstall com.example.demo
 
+# 启动应用
 $ tidevice launch com.example.demo
 
+# 停止应用
 $ tidevice kill com.example.demo
 
-# show installed app list
+# 查看已安装应用
 $ tidevice applist
 ```
 
-### Run XCTest
+### 运行XCTest
 ```bash
+# 运行XCTEST
 $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 ```
 
-### Other
+### 其他常用
 ```bash
-# mount developer image (need more test)
+# 挂载开发者镜像 (需要更多的测试)
 $ tidevice developer
 
-# reboot device
+# 重启
 $ tidevice reboot
 
+# 截图
 $ tidevice screenshot screenshot.jpg
 
-# TODO(ssx): collect performance
+# 性能采集 (TODO)
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
 ```
 
@@ -77,4 +98,4 @@ See [DEVELOP](DEVELOP.md)
 - [使用纯 python 实现 Instruments 协议，跨平台 (win,mac,linux) 获取 iOS 性能数据](https://testerhome.com/topics/27159)
 
 ## LICENSE
-[MIT](LICENSE.md)
+[MIT](LICENSE)

@@ -20,24 +20,23 @@ logger = logging.getLogger(PROGRAM_NAME)
 is_atty = getattr(sys.stdout, 'isatty', lambda: False)()
 
 
-def get_app_dir(*paths, create_dir=True) -> str:
+def get_app_dir(*paths) -> str:
     home = os.path.expanduser("~")
     appdir = os.path.join(home, "." + PROGRAM_NAME)
     if paths:
         appdir = os.path.join(appdir, *paths)
-    if create_dir:
-        os.makedirs(appdir, exist_ok=True)
+    os.makedirs(appdir, exist_ok=True)
     return appdir
 
 
-def get_app_file(*paths, create_dir=True) -> str:
-    assert paths, "must has at least one argument"
+# def get_app_file(*paths) -> str:
+#     assert paths, "must has at least one argument"
 
-    basedir = get_app_dir()
-    fpath = os.path.join(basedir, *paths)
-    if create_dir:
-        os.makedirs(os.path.dirname(fpath), exist_ok=True)
-    return fpath
+#     basedir = get_app_dir()
+#     fpath = os.path.join(basedir, *paths)
+#     if create_dir:
+#         os.makedirs(os.path.dirname(fpath), exist_ok=True)
+#     return fpath
 
 
 def get_binary_by_name(name: str) -> str:
