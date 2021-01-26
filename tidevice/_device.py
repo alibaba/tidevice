@@ -197,7 +197,7 @@ class BaseDevice():
     @property
     def ssl_pemfile_path(self):
         with self._lock:
-            appdir = get_app_dir("ssl", create_dir=True)
+            appdir = get_app_dir("ssl")
             fpath = os.path.join(appdir, self._udid + "-" + self._host_id + ".pem")
             if os.path.exists(fpath):
                 # 3 minutes not regenerate pemfile
@@ -514,8 +514,7 @@ class BaseDevice():
         # signature_url = image_url + ".signature"
 
         # app_dir = get_app_dir("DeviceSupport/iPhoneOS",
-        #                       version,
-        #                       create_dir=True)
+        #                       version)
         # image_path = app_dir + "/DeveloperDiskImage.dmg"
         # signature_path = image_path + ".signature"
 

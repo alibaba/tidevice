@@ -167,7 +167,7 @@ class AFCStatus(enum.IntEnum):
     NOT_ENOUGH_DATA = 32
     DIR_NOT_EMPTY = 33
 
-
+# See also: https://www.theiphonewiki.com/wiki/Models
 MODELS = {
     "iPhone5,1": "iPhone 5",
     "iPhone5,2": "iPhone 5",
@@ -179,7 +179,7 @@ MODELS = {
     "iPhone7,2": "iPhone 6",
     "iPhone8,1": "iPhone 6s",
     "iPhone8,2": "iPhone 6s Plus",
-    "iPhone8,4": "iPhone SE",
+    "iPhone8,4": "iPhone SE (1st generation)",
     "iPhone9,1": "iPhone 7",  # Global
     "iPhone9,2": "iPhone 7 Plus",  # Global
     "iPhone9,3": "iPhone 7",  # GSM
@@ -190,7 +190,6 @@ MODELS = {
     "iPhone10,4": "iPhone 8",  # GSM
     "iPhone10,5": "iPhone 8 Plus",  # GSM
     "iPhone10,6": "iPhone X",  # GSM
-    "iPhone11,8": "iPhone XR",
     "iPhone11,2": "iPhone XS",
     "iPhone11,4": "iPhone XS Max",
     "iPhone11,6": "iPhone XS Max",
@@ -198,7 +197,57 @@ MODELS = {
     "iPhone12,1": "iPhone 11",
     "iPhone12,3": "iPhone 11 Pro",
     "iPhone12,5": "iPhone 11 Pro Max",
-    "iPhone12,8": "iPhone SE 2nd",
+    "iPhone12,8": "iPhone SE (2nd generation)",
+    "iPhone13,1": "iPhone 12 mini",
+    "iPhone13,2": "iPhone 12",
+    "iPhone13,3": "iPhone 12 Pro",
+    "iPhone13,4": "iPhone 12 Pro Max",
+
+    "iPad11,1": "iPad mini (5th generation)",
+    "iPad11,2": "iPad mini (5th generation)",
+    "iPad5,2": "iPad mini 4",
+    "iPad5,1": "iPad mini 4",
+    "iPad4,7": "iPad mini 3",
+    "iPad4,8": "iPad mini 3",
+    "iPad4,9": "iPad mini 3",
+    "iPad4,4": "iPad mini 2",
+    "iPad4,5": "iPad mini 2",
+    "iPad4,6": "iPad mini 2",
+    "iPad2,5": "iPad mini",
+    "iPad2,6": "iPad mini",
+    "iPad2,7": "iPad mini",
+
+    "iPad13,1": "iPad Air (4th generation)",
+    "iPad13,2": "iPad Air (4th generation)",
+    "iPad11,3": "iPad Air (3th generation)",
+    "iPad11,4": "iPad Air (3th generation)",
+    "iPad5,3": "iPad Air 2",
+    "iPad5,4": "iPad Air 2",
+    "iPad4,1": "iPad Air",
+    "iPad4,2": "iPad Air",
+    "iPad4,3": "iPad Air",
+
+    "iPad8,11": "iPad Pro (12.9-inch) (4th generation)",
+    "iPad8,12": "iPad Pro (12.9-inch) (4th generation)",
+    "iPad8,9": "iPad Pro (11-inch) (2nd generation)",
+    "iPad8,10": "iPad Pro (11-inch) (2nd generation)",
+    "iPad8,5": "iPad Pro (12.9-inch) (3rd generation)",
+    "iPad8,6": "iPad Pro (12.9-inch) (3rd generation)",
+    "iPad8,7": "iPad Pro (12.9-inch) (3rd generation)",
+    "iPad8,8": "iPad Pro (12.9-inch) (3rd generation)",
+    "iPad8,1": "iPad Pro (11-inch)",
+    "iPad8,2": "iPad Pro (11-inch)",
+    "iPad8,3": "iPad Pro (11-inch)",
+    "iPad8,4": "iPad Pro (11-inch)",
+    "iPad7,3": "iPad Pro (10.5-inch)",
+    "iPad7,4": "iPad Pro (10.5-inch)",
+    "iPad7,1": "iPad Pro (12.9-inch) (2nd generation)",
+    "iPad7,2": "iPad Pro (12.9-inch) (2nd generation)",
+    "iPad6,3": "iPad Pro (9.7-inch)",
+    "iPad6,4": "iPad Pro (9.7-inch)",
+    "iPad6,7": "iPad Pro (12.9-inch)",
+    "iPad6,8": "iPad Pro (12.9-inch)",
+
     # simulator
     "i386": "iPhone Simulator",
     "x86_64": "iPhone Simulator",
