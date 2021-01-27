@@ -1,14 +1,19 @@
 # coding: utf-8
 #
 
+import contextlib
 import os
-import typing
 import shutil
+import tempfile
+import typing
+import zipfile
 from typing import List
+
+import requests
 
 from ._safe_socket import PlistSocket
 from ._utils import get_app_dir, logger
-from .exceptions import MuxError
+from .exceptions import MuxError, MuxServiceError
 
 
 class ImageMounter(PlistSocket):
@@ -29,8 +34,14 @@ class ImageMounter(PlistSocket):
             raise MuxError(ret['Error'])
         return ret.get('ImageSignature', [])
         
-    # def is_developer_mounted(self) -> bool:
-    #     return len(self.lookup()) > 0
+    def is_developer_mounted(self) -> bool:
+        """
+        Check if developer image mounted
+
+        Raises:
+            MuxError("DeviceLocked")
+        """
+        return len(self.lookup()) > 0
     
     def _check_error(self, ret: dict):
         if 'Error' in ret:

@@ -519,8 +519,7 @@ class BaseDevice():
         major, minor = product_version.split(".")[:2]
         version = major + "." + minor
 
-        # FIXME
-        mac_developer_dir = f"/ssApplications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/{version}"
+        mac_developer_dir = f"/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/{version}"
         image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
         signature_path = image_path + ".signature"
         if os.path.isfile(image_path) and os.path.isfile(signature_path):
@@ -550,6 +549,7 @@ class BaseDevice():
                 try:
                     self._urlretrieve(mirror_url, image_zip_path)
                 except requests.HTTPError:
+                    logger.debug("mirror download failed, change to original url")
                     # this might be slower
                     self._urlretrieve(origin_url, image_zip_path)
                 
@@ -558,14 +558,28 @@ class BaseDevice():
                 zf.extractall(tmpdir)
                 yield os.path.join(tmpdir, os.listdir(tmpdir)[0])
 
+    def _test_if_developer_mounted(self) -> bool:
+        try:
+            with self.create_session():
+                self._unsafe_start_service(LockdownService.MobileLockdown)
+                return True
+        except MuxServiceError:
+            return False
+
     def mount_developer_image(self):
         """
         Raises:
             MuxError
         """
-        signatures = self.imagemounter.lookup()
-        if signatures:
-            logger.info("DeveloperImage already mounted")
+        try:
+            if self.imagemounter.is_developer_mounted():
+                logger.info("DeveloperImage already mounted")
+                return
+        except MuxError: # expect: DeviceLocked
+            pass
+
+        if self._test_if_developer_mounted():
+            logger.info("DeviceLocked, but DeveloperImage already mounted")
             return
 
         with self._request_developer_image_dir() as _dir: #, signature_path:
