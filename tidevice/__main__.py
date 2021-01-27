@@ -263,50 +263,22 @@ def cmd_kill(args: argparse.Namespace):
             print("Kill pid:", pid)
 
 
-def _check_mounted(d: Device) -> bool:
-    try:
-        d._unsafe_start_service("com.apple.mobile.diagnostics_relay")
-        return True
-    except MuxServiceError:
-        return False
-    
+def cmd_system_info(args):
+    d = _udid2device(args.udid)
+    sinfo = d.instruments.system_info()
+    pprint(sinfo)
+
 
 def cmd_developer(args: argparse.Namespace):
     d = _udid2device(args.udid)
-    if _check_mounted(d):
-        logger.info("DeveloperImage already mounted")
-        return
-    
-    product_version = d.get_value("ProductVersion")
-    logger.info("ProductVersion: %s", product_version)
-    major, minor = product_version.split(".")[:2]
-    version = major + "." + minor
+    d.mount_developer_image()
+    return
 
-    device_support_paths = [
-        "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport", # Xcode
-        get_app_dir("DeviceSupport"),
-    ]
-    for _dir in device_support_paths:
-        logger.debug("Search developer disk image in Path:%r", _dir)
-        dimgdir = os.path.join(_dir, version)
-        if os.path.isdir(dimgdir):
-            d.imagemounter.mount(
-                os.path.join(dimgdir, "DeveloperDiskImage.dmg"),
-                os.path.join(dimgdir, "DeveloperDiskImage.dmg.signature"))
-            return
-        zippath = os.path.join(_dir, version+".zip")
-        if os.path.isfile(zippath):
-            # TODO
-            pass
-    else:
-        raise RuntimeError("DeveloperDiskImage nout found")
 
 def cmd_test(args: argparse.Namespace):
     print("Just test")
     # files = os.listdir(path)
     
-    
-            
     # Here need device unlocked
     # signatures = d.imagemounter.lookup()
     # if signatures:
@@ -334,6 +306,9 @@ _commands = [
                   help="output as json format")
          ],
          help="show device info"),
+    dict(action=cmd_system_info,
+         command="sysinfo",
+         help="show device system info"),
     dict(action=cmd_install,
          command="install",
          flags=[
