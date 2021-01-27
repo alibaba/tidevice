@@ -70,7 +70,7 @@ class Sync(PlistSocket):
         # ...
         # Therefore, we need to check the first 4 bytes
         buf = self.recvall(4)
-        if bytes(buf) != AFC_MAGIC[:4]:
+        if buf != AFC_MAGIC[:4]:
             (plist_size, ) = struct.unpack(">I", buf)
             self.recvall(plist_size) # Discard plist xml-content
             buf = b""
