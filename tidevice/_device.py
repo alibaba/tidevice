@@ -765,6 +765,7 @@ class BaseDevice():
     def _launch_wda(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
+                    env: dict = {},
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None) -> int:  # pid
 
@@ -817,6 +818,7 @@ class BaseDevice():
             'MJPEG_SERVER_PORT': '',
             'USE_PORT': '',
         } # yapf: disable
+        app_env.update(env)
 
         if self.major_version() >= 11:
             app_env['DYLD_INSERT_LIBRARIES'] = '/Developer/usr/lib/libMainThreadChecker.dylib'
@@ -898,7 +900,7 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None):
+    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
         """
@@ -979,7 +981,7 @@ class BaseDevice():
         # launch test app
         # index: 1540
 
-        pid = self._launch_wda(bundle_id, session_identifier, logger)
+        pid = self._launch_wda(bundle_id, session_identifier, env=env, logger=logger)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored

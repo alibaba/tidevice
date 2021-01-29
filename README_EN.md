@@ -62,7 +62,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### Run XCTest
+### Run WebDriverAgent
 > Please make sure your iPhone already have [WebDriverAgent](https://github.com/appium/WebDriverAgent) installed
 
 ```bash
@@ -74,6 +74,9 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:23 _device:1003] ProductVersion: 12.4
 [I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
+
+# Change WDA listen port to 8200
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
 ```
 
 Then you can connect with Appium or [facebook-wda](https://github.com/openatx/facebook-wda)

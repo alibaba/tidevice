@@ -66,7 +66,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### 运行XCTest
+### 运行WebDriverAgent
 > 请先确保手机上已经安装有[WebDriverAgent](https://github.com/appium/WebDriverAgent)应用
 
 ```bash
@@ -79,6 +79,9 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:23 _device:1003] ProductVersion: 12.4
 [I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
+
+# 修改监听端口为8200
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
 ```
 
 启动后你就可以使用Appium 或者 [facebook-wda](https://github.com/openatx/facebook-wda) 来运行iOS自动化了

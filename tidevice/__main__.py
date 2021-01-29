@@ -200,7 +200,13 @@ def cmd_xctest(args: argparse.Namespace):
     Run XCTest required WDA installed.
     """
     d = _udid2device(args.udid)
-    d.xctest(args.bundle_id, logger=setup_logger(level=logging.INFO))
+    env = {}
+    for kv in args.env or {}:
+        key, val = kv.split(":", 1)
+        env[key] = val
+    if env:
+        logger.info("Launch env: %s", env)
+    d.xctest(args.bundle_id, logger=setup_logger(level=logging.INFO), env=env)
 
 
 def cmd_screenshot(args: argparse.Namespace):
@@ -230,7 +236,7 @@ def cmd_applist(args: argparse.Namespace):
         try:
             display_name = info['CFBundleDisplayName']
             # major.minor.patch
-            version = info.get('CFBundleShortVersionString','')  
+            version = info.get('CFBundleShortVersionString', '')
             print(bundle_id, display_name, version)
         except BrokenPipeError:
             break
@@ -243,8 +249,8 @@ def cmd_launch(args: argparse.Namespace):
     d = _udid2device(args.udid)
     try:
         pid = d.instruments.app_launch(args.bundle_id,
-                                    args=args.arguments,
-                                    kill_running=args.kill)
+                                       args=args.arguments,
+                                       kill_running=args.kill)
         print("PID:", pid)
     except ServiceError as e:
         sys.exit(e)
@@ -278,14 +284,12 @@ def cmd_developer(args: argparse.Namespace):
 def cmd_test(args: argparse.Namespace):
     print("Just test")
     # files = os.listdir(path)
-    
+
     # Here need device unlocked
     # signatures = d.imagemounter.lookup()
     # if signatures:
     #     logger.info("DeveloperImage already mounted")
     #     return
-    
-    
 
 
 _commands = [
@@ -339,7 +343,10 @@ _commands = [
                   help="test application bundle id"),
              dict(args=['-I', '--install-wda'],
                   action='store_true',
-                  help='install webdriveragent app')
+                  help='install webdriveragent app'),
+             dict(args=['-e', '--env'],
+                  action='append',
+                  help="set env with format key:value, support multi -e"),
          ],
          help="run XCTest"),
     dict(action=cmd_screenshot,
@@ -357,7 +364,9 @@ _commands = [
              dict(args=['arguments'], nargs='*', help='app arguments'),
          ],
          help="launch app with bundle_id"),
-    dict(action=cmd_developer, command="developer", help="mount developer image to device"),
+    dict(action=cmd_developer,
+         command="developer",
+         help="mount developer image to device"),
     dict(action=cmd_kill,
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],
