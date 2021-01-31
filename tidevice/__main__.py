@@ -31,7 +31,7 @@ from ._ipautil import IPAReader
 from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._usbmux import Usbmux
 from ._version import __version__
-from .exceptions import MuxError, ServiceError
+from .exceptions import MuxError, MuxServiceError, ServiceError
 
 from ._proto import MODELS, PROGRAM_NAME
 
@@ -200,7 +200,13 @@ def cmd_xctest(args: argparse.Namespace):
     Run XCTest required WDA installed.
     """
     d = _udid2device(args.udid)
-    d.xctest(args.bundle_id, logger=setup_logger(level=logging.INFO))
+    env = {}
+    for kv in args.env or {}:
+        key, val = kv.split(":", 1)
+        env[key] = val
+    if env:
+        logger.info("Launch env: %s", env)
+    d.xctest(args.bundle_id, logger=setup_logger(level=logging.INFO), env=env)
 
 
 def cmd_screenshot(args: argparse.Namespace):
@@ -230,7 +236,7 @@ def cmd_applist(args: argparse.Namespace):
         try:
             display_name = info['CFBundleDisplayName']
             # major.minor.patch
-            version = info.get('CFBundleShortVersionString','')  
+            version = info.get('CFBundleShortVersionString', '')
             print(bundle_id, display_name, version)
         except BrokenPipeError:
             break
@@ -243,8 +249,8 @@ def cmd_launch(args: argparse.Namespace):
     d = _udid2device(args.udid)
     try:
         pid = d.instruments.app_launch(args.bundle_id,
-                                    args=args.arguments,
-                                    kill_running=args.kill)
+                                       args=args.arguments,
+                                       kill_running=args.kill)
         print("PID:", pid)
     except ServiceError as e:
         sys.exit(e)
@@ -263,41 +269,27 @@ def cmd_kill(args: argparse.Namespace):
             print("Kill pid:", pid)
 
 
+def cmd_system_info(args):
+    d = _udid2device(args.udid)
+    sinfo = d.instruments.system_info()
+    pprint(sinfo)
+
+
+def cmd_developer(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    d.mount_developer_image()
+    return
+
+
 def cmd_test(args: argparse.Namespace):
     print("Just test")
     # files = os.listdir(path)
-    
-    d = _udid2device(args.udid)
 
     # Here need device unlocked
     # signatures = d.imagemounter.lookup()
     # if signatures:
     #     logger.info("DeveloperImage already mounted")
     #     return
-    
-    product_version = d.get_value("ProductVersion")
-    logger.info("ProductVersion: %s", product_version)
-    major, minor = product_version.split(".")[:2]
-    version = major + "." + minor
-
-    device_support_paths = [
-        "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport", # Xcode
-        get_app_dir("DeviceSupport"),
-    ]
-    for _dir in device_support_paths:
-        logger.debug("Search developer disk image in Path:%r", _dir)
-        dimgdir = os.path.join(_dir, version)
-        if os.path.isdir(dimgdir):
-            d.imagemounter.mount(
-                os.path.join(dimgdir, "DeveloperDiskImage.dmg"),
-                os.path.join(dimgdir, "DeveloperDiskImage.dmg.signature"))
-            return
-        zippath = os.path.join(_dir, version+".zip")
-        if os.path.isfile(zippath):
-            # TODO
-            pass
-    else:
-        raise RuntimeError("DeveloperDiskImage nout found")
 
 
 _commands = [
@@ -318,6 +310,9 @@ _commands = [
                   help="output as json format")
          ],
          help="show device info"),
+    dict(action=cmd_system_info,
+         command="sysinfo",
+         help="show device system info"),
     dict(action=cmd_install,
          command="install",
          flags=[
@@ -348,7 +343,10 @@ _commands = [
                   help="test application bundle id"),
              dict(args=['-I', '--install-wda'],
                   action='store_true',
-                  help='install webdriveragent app')
+                  help='install webdriveragent app'),
+             dict(args=['-e', '--env'],
+                  action='append',
+                  help="set env with format key:value, support multi -e"),
          ],
          help="run XCTest"),
     dict(action=cmd_screenshot,
@@ -366,6 +364,9 @@ _commands = [
              dict(args=['arguments'], nargs='*', help='app arguments'),
          ],
          help="launch app with bundle_id"),
+    dict(action=cmd_developer,
+         command="developer",
+         help="mount developer image to device"),
     dict(action=cmd_kill,
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],

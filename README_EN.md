@@ -4,17 +4,20 @@
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
-[中文文档](README_CN.md)
+[中文文档](README.md)
 
 Command line tool to communicate with iOS device, support the following functions
 
+- screenshot
+- get device info
 - ipa install and uninstall
 - launch and kill app
 - list installed app info
 - retrieve performance data
-- screenshot
 - simulate run xctest, eg: WebDriverAgent
 - other
+
+Support platform: Mac, Linux, Windows
 
 ## Install
 ```bash
@@ -59,16 +62,46 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### Run XCTest
+### Run WebDriverAgent
+> Please make sure your iPhone already have [WebDriverAgent](https://github.com/appium/WebDriverAgent) installed
+
 ```bash
 $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
+[I 210127 11:40:23 _device:909] BundleID: com.facebook.wda.WebDriverAgent.Runner
+[I 210127 11:40:23 _device:911] DeviceIdentifier: 12345678901234567890abcdefg
+[I 210127 11:40:23 _device:773] SignIdentity: 'Apple Development: -Your-Developer-Name-'
+[I 210127 11:40:23 _device:840] Launch 'com.facebook.wda.WebDriverAgent.Runner' pid: 239
+[I 210127 11:40:23 _device:1003] ProductVersion: 12.4
+[I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
+[I 210127 11:40:24 _device:875] WebDriverAgent start successfully
+
+# Change WDA listen port to 8200
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
+```
+
+Then you can connect with Appium or [facebook-wda](https://github.com/openatx/facebook-wda)
+
+*facebook-wda example code*
+
+```python
+import wda
+c = wda.USBClient()
+print(c.info)
+```
+
+### Mount DeveloperDiskImage
+```bash
+# Find in /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/
+# If not found, download from https://github.com/iGhibli/iOS-DeviceSupport
+$ tidevice developer
+[I 210127 11:37:52 _device:518] ProductVersion: 12.4
+[I 210127 11:37:52 _imagemounter:81] Pushing DeveloperDiskImage.dmg
+[I 210127 11:37:52 _imagemounter:94] Push complete
+[I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
 ```
 
 ### Other
 ```bash
-# mount developer image (need more test)
-$ tidevice developer
-
 # reboot device
 $ tidevice reboot
 
@@ -86,6 +119,7 @@ See [DEVELOP](DEVELOP.md)
 - <https://github.com/facebook/idb>
 - Python implement of libimobiledevice: <https://github.com/iOSForensics/pymobiledevice>
 - Apple Device Images: <https://github.com/iGhibli/iOS-DeviceSupport>
+- <https://github.com/anonymous5l/iConsole>
 - <https://github.com/troybowman/dtxmsg>
 - <https://github.com/troybowman/ios_instruments_client>
 - Binary of libimobiledevice for Windows <http://docs.quamotion.mobi/docs/imobiledevice/>

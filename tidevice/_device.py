@@ -23,6 +23,7 @@ import urllib.request
 import uuid
 from collections import namedtuple
 from typing import Iterator, Optional, Tuple, Union
+import zipfile
 
 import requests
 from cached_property import cached_property
@@ -491,7 +492,25 @@ class BaseDevice():
         conn = self._unsafe_start_service(ImageMounter.SERVICE_NAME)
         return ImageMounter(conn)
 
-    def _get_developer_image_path(self):
+    def _urlretrieve(self, url, local_filename):
+        """ download url to local """
+        logger.info("Download %s -> %s", url, local_filename)
+
+        try:
+            tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+                with open(tmp_local_filename, 'wb') as f:
+                    shutil.copyfileobj(r.raw, f, length=16<<20)
+                    f.flush()
+                os.rename(tmp_local_filename, local_filename)
+                logger.info("%r download successfully", local_filename)
+        finally:
+            if os.path.isfile(tmp_local_filename):
+                os.remove(tmp_local_filename)
+        
+    @contextlib.contextmanager
+    def _request_developer_image_dir(self):
         # use local path first
         # use download cache resource second
         # download from network third
@@ -500,45 +519,74 @@ class BaseDevice():
         major, minor = product_version.split(".")[:2]
         version = major + "." + minor
 
-        mac_developer_dir = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport"
-        image_path = os.path.join(mac_developer_dir, version,
-                                  "DeveloperDiskImage.dmg")
+        mac_developer_dir = f"/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/{version}"
+        image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
         signature_path = image_path + ".signature"
         if os.path.isfile(image_path) and os.path.isfile(signature_path):
-            return image_path, signature_path
+            # yield image_path, signature_path
+            yield mac_developer_dir
+        else:
+            # $HOME/.tidevice/device-support/12.2.zip
+            local_device_support = get_app_dir("device-support")
+            image_zip_path = os.path.join(local_device_support, version+".zip")
+            if not os.path.isfile(image_zip_path):
+                # https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/10.0.zip
+                _alias = {
+                    "12.2": "12.2 (16E5212e).zip",
+                    "12.4": "12.4 (FromXcode_11_Beta_7_xip).zip",
+                    "12.5": "12.4 (FromXcode_11_Beta_7_xip).zip", # 12.5 can work on 12.4
+                    "13.6": "13.6(FromXcode_12_beta_4_xip).zip",
+                    "13.7": "13.7 (17H35).zip",
+                    "14.0": "14.0(FromXcode_12_beta_6_xip).zip",
+                    "14.1": "14.1(FromXcode12.1(12A7403)).zip",
+                    "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
+                    "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
+                }
+                zip_name = _alias.get(version, f"{version}.zip")
+                origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
+                mirror_url = f"https://tool.appetizer.io/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
+                # logger.info("Download %s -> %s", download_url, image_zip_path)
+                try:
+                    self._urlretrieve(mirror_url, image_zip_path)
+                except requests.HTTPError:
+                    logger.debug("mirror download failed, change to original url")
+                    # this might be slower
+                    self._urlretrieve(origin_url, image_zip_path)
+                
+            with tempfile.TemporaryDirectory() as tmpdir:
+                zf = zipfile.ZipFile(image_zip_path)
+                zf.extractall(tmpdir)
+                yield os.path.join(tmpdir, os.listdir(tmpdir)[0])
 
-        raise NotImplementedError("Download DeveloperDiskImage.dmg from web is not ready yet")
-        # # not ready yet
-        # # download from github binaries
-        # image_url = f"https://github.com/alibaba/tidevice/releases/download/device-support/iphoneos-{version}.zip"
-        # signature_url = image_url + ".signature"
-
-        # app_dir = get_app_dir("DeviceSupport/iPhoneOS",
-        #                       version)
-        # image_path = app_dir + "/DeveloperDiskImage.dmg"
-        # signature_path = image_path + ".signature"
-
-        # # no caches
-        # if not os.path.exists(image_path) or not os.path.exists(
-        #         signature_path):
-        #     logger.info("Downloading developer image")
-        #     urllib.request.urlretrieve(image_url, image_path)
-        #     urllib.request.urlretrieve(signature_url, signature_path)
-        # return image_path, signature_path
+    def _test_if_developer_mounted(self) -> bool:
+        try:
+            with self.create_session():
+                self._unsafe_start_service(LockdownService.MobileLockdown)
+                return True
+        except MuxServiceError:
+            return False
 
     def mount_developer_image(self):
         """
         Raises:
             MuxError
         """
-        signatures = self.imagemounter.lookup()
-        if signatures:
-            logger.info("DeveloperImage already mounted")
+        try:
+            if self.imagemounter.is_developer_mounted():
+                logger.info("DeveloperImage already mounted")
+                return
+        except MuxError: # expect: DeviceLocked
+            pass
+
+        if self._test_if_developer_mounted():
+            logger.info("DeviceLocked, but DeveloperImage already mounted")
             return
 
-        image_path, signature_path = self._get_developer_image_path()
-        self.imagemounter.mount(image_path, signature_path)
-        logger.info("DeveloperImage mounted successfully")
+        with self._request_developer_image_dir() as _dir: #, signature_path:
+            image_path = os.path.join(_dir, "DeveloperDiskImage.dmg")
+            signature_path = image_path + ".signature"
+            self.imagemounter.mount(image_path, signature_path)
+            logger.info("DeveloperImage mounted successfully")
 
     @property
     def sync(self) -> Sync:
@@ -717,6 +765,7 @@ class BaseDevice():
     def _launch_wda(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
+                    env: dict = {},
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None) -> int:  # pid
 
@@ -759,7 +808,6 @@ class BaseDevice():
             'DYLD_FRAMEWORK_PATH': app_path + '/Frameworks:',
             'DYLD_LIBRARY_PATH': app_path + '/Frameworks',
             'NSUnbufferedIO': 'YES',
-            'OS_ACTIVITY_DT_MODE': 'YES',
             'SQLITE_ENABLE_THREAD_ASSERTIONS': '1',
             'WDA_PRODUCT_BUNDLE_IDENTIFIER': '',
             'XCTestConfigurationFilePath': xctestconfiguration_path,
@@ -767,11 +815,14 @@ class BaseDevice():
             # '__XCODE_BUILT_PRODUCTS_DIR_PATHS': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             # '__XPC_DYLD_FRAMEWORK_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             # '__XPC_DYLD_LIBRARY_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
-            # iOS 11
-            'DYLD_INSERT_LIBRARIES': '/Developer/usr/lib/libMainThreadChecker.dylib',
             'MJPEG_SERVER_PORT': '',
             'USE_PORT': '',
         } # yapf: disable
+        app_env.update(env)
+
+        if self.major_version() >= 11:
+            app_env['DYLD_INSERT_LIBRARIES'] = '/Developer/usr/lib/libMainThreadChecker.dylib'
+            app_env['OS_ACTIVITY_DT_MODE'] = 'YES'
 
         app_args = [
             '-NSTreatUnknownArgumentsAsOpen', 'NO',
@@ -821,7 +872,8 @@ class BaseDevice():
                 method, args = m.result
                 if method == 'outputReceived:fromProcess:atTime:':
                     logger.debug("Output: %s", args[0].strip())
-                    if "Using singleton test manager" in args[0]:
+                    # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
+                    if "ServerURLHere" in args[0]:
                         logger.info("WebDriverAgent start successfully")
 
         conn.register_callback(Event.NOTIFICATION, _callback)
@@ -848,7 +900,7 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None):
+    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
         """
@@ -874,11 +926,13 @@ class BaseDevice():
         x1_daemon_chan = x1.make_channel(
             'dtxproxy:XCTestManager_IDEInterface:XCTestManager_DaemonConnectionInterface'
         )
-        identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
-        aux = AUXMessageBuffer()
-        aux.append_obj(XCODE_VERSION)
-        result = x1.call_message(x1_daemon_chan, identifier, aux)
-        logger.debug("result: %s", result)
+
+        if self.major_version() >= 11:
+            identifier = '_IDE_initiateControlSessionWithProtocolVersion:'
+            aux = AUXMessageBuffer()
+            aux.append_obj(XCODE_VERSION)
+            result = x1.call_message(x1_daemon_chan, identifier, aux)
+            logger.debug("result: %s", result)
         x1.register_callback(Event.FINISHED, lambda _: quit_event.set())
 
         ##
@@ -927,7 +981,7 @@ class BaseDevice():
         # launch test app
         # index: 1540
 
-        pid = self._launch_wda(bundle_id, session_identifier, logger)
+        pid = self._launch_wda(bundle_id, session_identifier, env=env, logger=logger)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored
@@ -957,6 +1011,12 @@ class BaseDevice():
             aux.append_obj(pid)
             result = x1.call_message(x1_daemon_chan, identifier, aux)
             logger.debug("result: %s", result)
+        elif self.major_version() <= 9:
+            identifier = '_IDE_initiateControlSessionForTestProcessID:'
+            aux = AUXMessageBuffer()
+            aux.append_obj(pid)
+            result = x1.call_message(x1_daemon_chan, identifier, aux)
+            logger.debug("result: %s", result)
         else:
             identifier = '_IDE_initiateControlSessionForTestProcessID:protocolVersion:'
             aux = AUXMessageBuffer()
@@ -964,6 +1024,9 @@ class BaseDevice():
             aux.append_obj(XCODE_VERSION)
             result = x1.call_message(x1_daemon_chan, identifier, aux)
             logger.debug("result: %s", result)
+        
+        if "NSError" in str(result):
+            raise RuntimeError("Xcode Invocation Failed: {}".format(result))
 
         # wait for quit
         # on windows threading.Event.wait can't handle ctrl-c
