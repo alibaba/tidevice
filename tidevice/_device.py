@@ -541,6 +541,7 @@ class BaseDevice():
                     "14.1": "14.1(FromXcode12.1(12A7403)).zip",
                     "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
                     "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
+                    "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
                 origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
