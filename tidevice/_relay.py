@@ -7,15 +7,17 @@ Same as iproxy
 """
 
 import colored
-from tidevice.exceptions import MuxReplyError
 import simple_tornado
 from logzero import logger
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream, StreamClosedError
 from tornado.tcpserver import TCPServer
 
+from tidevice.exceptions import MuxReplyError
+
 from ._device import Device
 from ._hexdump import hexdump
+
 
 class RelayTCPServer(TCPServer):
     def __init__(self, device: Device, device_port: int, debug: bool = False):
