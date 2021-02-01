@@ -1,6 +1,12 @@
 # DEVELOP
 Doc for developers
 
+Clone code to local
+
+```bash
+git clone --depth 5 https://github.com/alibaba/tidevice
+```
+
 ## View DeveloperDiskImage Content
 For example
 
@@ -17,6 +23,11 @@ xcodebuild build-for-testing -workspace WebDriverAgent.xcworkspace/ -scheme WebD
 ```
 
 Created folder `Payload` and put `.app` into it, then compressed to zip, change extention name to `.ipa`, and resign. That's all.
+
+
+## Publish package to Pypi using Github Actions
+Ref: https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+
 
 ## References
 - C implementation <https://github.com/libimobiledevice>
