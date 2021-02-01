@@ -114,6 +114,9 @@ $ tidevice developer
 # 转发TCP请求到手机上运行的服务，类似于iproxy
 $ tidevice relay 8100 8100
 
+# 转发并同时，显示tcp传输的内容
+$ tidevice relay -x 8100 8100
+
 # 重启
 $ tidevice reboot
 

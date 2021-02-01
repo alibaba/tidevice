@@ -36,3 +36,4 @@ Ref: https://packaging.python.org/guides/publishing-package-distribution-release
 - <https://github.com/troybowman/dtxmsg>
 - <https://github.com/troybowman/ios_instruments_client>
 - Binary of libimobiledevice for Windows <http://docs.quamotion.mobi/docs/imobiledevice/>
+- https://pypi.org/project/hexdump/

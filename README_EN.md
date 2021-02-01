@@ -50,7 +50,9 @@ $ tidevice list --json
 ### App management
 ```bash
 $ tidevice install example.ipa
-$ tidevice install https://example.org/example.ipa
+
+# Specify device udid to install
+$ tidevice --udid $UDID install https://example.org/example.ipa
 
 $ tidevice uninstall com.example.demo
 
@@ -102,6 +104,12 @@ $ tidevice developer
 
 ### Other
 ```bash
+# proxy local tcp request to phone, alternative: iproxy
+$ tidevice relay 8100 8100
+
+# relay and show traffic data with hexdump
+$ tidevice relay -x 8100 8100
+
 # reboot device
 $ tidevice reboot
 

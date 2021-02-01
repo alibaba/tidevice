@@ -283,7 +283,7 @@ def cmd_developer(args: argparse.Namespace):
 
 def cmd_relay(args: argparse.Namespace):
     d = _udid2device(args.udid)
-    relay(d, args.lport, args.rport)
+    relay(d, args.lport, args.rport, debug=args.x)
 
 
 def cmd_test(args: argparse.Namespace):
@@ -379,8 +379,9 @@ _commands = [
     dict(action=cmd_relay,
         command="relay",
         flags=[
+            dict(args=['-x'], action='store_true', help='verbose data traffic, hexadecimal'),
             dict(args=['lport'], type=int, help='local port'),
-            dict(args=['rport'], type=int, help='remote port')
+            dict(args=['rport'], type=int, help='remote port'),
         ],
         help="relay phone inner port to pc, same as iproxy"),
     dict(action=cmd_test, command="test", help="command for developer"),
