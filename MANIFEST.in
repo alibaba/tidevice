@@ -1,0 +1,3 @@
+# Ref: https://packaging.python.org/guides/using-manifest-in/
+#
+prune tests/
