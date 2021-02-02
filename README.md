@@ -20,6 +20,9 @@
 支持运行在Mac，Linux，Windows上
 
 ## 安装
+
+Python 3.7+
+
 ```bash
 pip3 install -U tidevice
 ```

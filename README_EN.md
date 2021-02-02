@@ -20,6 +20,8 @@ Command line tool to communicate with iOS device, support the following function
 Support platform: Mac, Linux, Windows
 
 ## Install
+Python 3.7+
+
 ```bash
 pip3 install -U tidevice
 ```

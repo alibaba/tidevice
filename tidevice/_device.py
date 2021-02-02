@@ -776,11 +776,15 @@ class BaseDevice():
 
         app_container = app_info['Container']
 
-        target = app_info.get("CFBundleName").split("-")[0]
-        xctest_path = "/tmp/{}-".format(target) + str(
-            session_identifier).upper() + ".xctestconfiguration"  # yapf: disable
+        # CFBundleName always endswith -Runner
+        bundle_name = app_info['CFBundleName']
+        logger.info("CFBundleName: %s", bundle_name)
+        assert bundle_name.endswith("-Runner"), "invalid bundleName: %s" % bundle_name
+        target_name = bundle_name[:-len("-Runner")]
+
+        xctest_path = f"/tmp/{target_name}-{str(session_identifier).upper()}.xctestconfiguration"  # yapf: disable
         xctest_content = bplist.objc_encode(bplist.XCTestConfiguration({
-            "testBundleURL": bplist.NSURL(None, "file://" + app_info['Path'] + "/PlugIns/{}.xctest".format(target)),
+            "testBundleURL": bplist.NSURL(None, f"file://{app_info['Path']}/PlugIns/{target_name}.xctest"),
             "sessionIdentifier": session_identifier,
         }))  # yapf: disable
 
