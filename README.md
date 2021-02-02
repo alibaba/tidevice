@@ -20,6 +20,9 @@
 支持运行在Mac，Linux，Windows上
 
 ## 安装
+
+Python 3.7+
+
 ```bash
 pip3 install -U tidevice
 ```
@@ -51,7 +54,9 @@ $ tidevice list --json
 ```bash
 # 安装应用
 $ tidevice install example.ipa
-$ tidevice install https://example.org/example.ipa
+
+# 指定设备安装
+$ tidevice --udid $UDID install https://example.org/example.ipa
 
 # 卸载应用
 $ tidevice uninstall com.example.demo
@@ -109,6 +114,12 @@ $ tidevice developer
 
 ### 其他常用
 ```bash
+# 转发TCP请求到手机上运行的服务，类似于iproxy
+$ tidevice relay 8100 8100
+
+# 转发并同时，显示tcp传输的内容
+$ tidevice relay -x 8100 8100
+
 # 重启
 $ tidevice reboot
 

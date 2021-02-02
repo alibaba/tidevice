@@ -28,12 +28,12 @@ from logzero import setup_logger
 
 from ._device import Device
 from ._ipautil import IPAReader
-from ._utils import get_app_dir, get_binary_by_name, is_atty
+from ._proto import MODELS, PROGRAM_NAME
+from ._relay import relay
 from ._usbmux import Usbmux
+from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._version import __version__
 from .exceptions import MuxError, MuxServiceError, ServiceError
-
-from ._proto import MODELS, PROGRAM_NAME
 
 um = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
@@ -281,6 +281,11 @@ def cmd_developer(args: argparse.Namespace):
     return
 
 
+def cmd_relay(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    relay(d, args.lport, args.rport, debug=args.x)
+
+
 def cmd_test(args: argparse.Namespace):
     print("Just test")
     # files = os.listdir(path)
@@ -371,6 +376,14 @@ _commands = [
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],
          help="kill by pid or bundle_id"),
+    dict(action=cmd_relay,
+        command="relay",
+        flags=[
+            dict(args=['-x'], action='store_true', help='verbose data traffic, hexadecimal'),
+            dict(args=['lport'], type=int, help='local port'),
+            dict(args=['rport'], type=int, help='remote port'),
+        ],
+        help="relay phone inner port to pc, same as iproxy"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 
