@@ -776,11 +776,13 @@ class BaseDevice():
 
         app_container = app_info['Container']
 
-        xctest_path = "/tmp/WebDriverAgentRunner-" + str(session_identifier).upper() + ".xctestconfiguration" # yapf: disable
+        target = app_info.get("CFBundleName").split("-")[0]
+        xctest_path = "/tmp/{}-".format(target) + str(
+            session_identifier).upper() + ".xctestconfiguration"  # yapf: disable
         xctest_content = bplist.objc_encode(bplist.XCTestConfiguration({
-            "testBundleURL": bplist.NSURL(None, "file://" + app_info['Path'] + "/PlugIns/WebDriverAgentRunner.xctest"),
+            "testBundleURL": bplist.NSURL(None, "file://" + app_info['Path'] + "/PlugIns/{}.xctest".format(target)),
             "sessionIdentifier": session_identifier,
-        })) # yapf: disable
+        }))  # yapf: disable
 
         fsync = self.app_sync(bundle_id)
         for fname in fsync.listdir("/tmp"):
