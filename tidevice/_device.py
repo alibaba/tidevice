@@ -777,10 +777,10 @@ class BaseDevice():
         app_container = app_info['Container']
 
         # CFBundleName always endswith -Runner
-        bundle_name = app_info['CFBundleName']
-        logger.info("CFBundleName: %s", bundle_name)
-        assert bundle_name.endswith("-Runner"), "invalid bundleName: %s" % bundle_name
-        target_name = bundle_name[:-len("-Runner")]
+        exec_name = app_info['CFBundleExecutable']
+        logger.info("CFBundleExecutable: %s", exec_name)
+        assert exec_name.endswith("-Runner"), "Invalid CFBundleExecutable: %s" % exec_name
+        target_name = exec_name[:-len("-Runner")]
 
         xctest_path = f"/tmp/{target_name}-{str(session_identifier).upper()}.xctestconfiguration"  # yapf: disable
         xctest_content = bplist.objc_encode(bplist.XCTestConfiguration({
