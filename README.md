@@ -71,7 +71,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### 运行WebDriverAgent
+### Run XCTest
 > 请先确保手机上已经安装有[WebDriverAgent](https://github.com/appium/WebDriverAgent)应用
 
 ```bash
@@ -89,13 +89,31 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
 ```
 
+### Relay
+```
+# 转发请求到手机，类似于iproxy
+$ tidevice relay 8100 8100
+
+# 转发并把传输的内容用hexdump的方法print出来
+$ tidevice relay -x 8100 8100
+```
+
+### 运行WebDriverAgent
+wdaproxy这个命令会同时调用xctest和relay，另外当wda退出时，会自动重新启动xctest
+
+```bash
+# 运行 XCTest 并在PC上监听8200端口转发到手机8100服务
+$ tidevice wdaproxy -B com.facebook.wda.WebDriverAgent.Runner --port 8200
+...logs...
+```
+
 启动后你就可以使用Appium 或者 [facebook-wda](https://github.com/openatx/facebook-wda) 来运行iOS自动化了
 
 *facebook-wda example code*
 
 ```python
 import wda
-c = wda.USBClient()
+c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
 
@@ -114,12 +132,6 @@ $ tidevice developer
 
 ### 其他常用
 ```bash
-# 转发TCP请求到手机上运行的服务，类似于iproxy
-$ tidevice relay 8100 8100
-
-# 转发并同时，显示tcp传输的内容
-$ tidevice relay -x 8100 8100
-
 # 重启
 $ tidevice reboot
 

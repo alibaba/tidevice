@@ -19,7 +19,6 @@ import tempfile
 import threading
 import time
 import typing
-import urllib.request
 import uuid
 from collections import namedtuple
 from typing import Iterator, Optional, Tuple, Union
@@ -763,7 +762,7 @@ class BaseDevice():
     def instruments(self) -> ServiceInstruments:
         return self.connect_instruments()
 
-    def _launch_wda(self,
+    def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
                     env: dict = {},
@@ -988,7 +987,7 @@ class BaseDevice():
         # launch test app
         # index: 1540
 
-        pid = self._launch_wda(bundle_id, session_identifier, env=env, logger=logger)
+        pid = self._launch_app_runner(bundle_id, session_identifier, env=env, logger=logger)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored

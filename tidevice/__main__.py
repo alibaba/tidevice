@@ -286,7 +286,31 @@ def cmd_relay(args: argparse.Namespace):
     relay(d, args.lport, args.rport, debug=args.x)
 
 
+def cmd_wdaproxy(args: argparse.Namespace):
+    """ start xctest and relay """
+    d = _udid2device(args.udid)
+    from ._wdaproxy import WDAService
+
+    serv = WDAService(d, args.bundle_id)
+    p = None
+    if args.port:
+        cmds = [
+            sys.executable, '-m', 'tidevice', '-u', d.udid, 'relay',
+            str(args.port), '8100'
+        ]
+        p = subprocess.Popen(cmds, stdout=sys.stdout, stderr=sys.stderr)
+    
+    try:
+        serv.start()
+        while serv._service.running:
+            time.sleep(.1)
+    finally:
+        p and p.terminate()
+        serv.stop()
+
+
 def cmd_test(args: argparse.Namespace):
+
     print("Just test")
     # files = os.listdir(path)
 
@@ -377,13 +401,27 @@ _commands = [
          flags=[dict(args=['name'], help='pid or bundle_id')],
          help="kill by pid or bundle_id"),
     dict(action=cmd_relay,
-        command="relay",
-        flags=[
-            dict(args=['-x'], action='store_true', help='verbose data traffic, hexadecimal'),
-            dict(args=['lport'], type=int, help='local port'),
-            dict(args=['rport'], type=int, help='remote port'),
-        ],
-        help="relay phone inner port to pc, same as iproxy"),
+         command="relay",
+         flags=[
+             dict(args=['-x'],
+                  action='store_true',
+                  help='verbose data traffic, hexadecimal'),
+             dict(args=['lport'], type=int, help='local port'),
+             dict(args=['rport'], type=int, help='remote port'),
+         ],
+         help="relay phone inner port to pc, same as iproxy"),
+    dict(action=cmd_wdaproxy,
+         command='wdaproxy',
+         flags=[
+             dict(args=['-B', '--bundle_id'],
+                  default="com.facebook.*.xctrunner",
+                  help="test application bundle id"),
+             dict(args=['-p', '--port'],
+                  type=int,
+                  default=8100,
+                  help='pc listen port, set to 0 to disable port forward')
+         ],
+         help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 

@@ -66,7 +66,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### Run WebDriverAgent
+### Run XCTest
 > Please make sure your iPhone already have [WebDriverAgent](https://github.com/appium/WebDriverAgent) installed
 
 ```bash
@@ -83,13 +83,31 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
 ```
 
+### Relay
+```
+# proxy local tcp request to phone, alternative: iproxy
+$ tidevice relay 8100 8100
+
+# relay and show traffic data with hexdump
+$ tidevice relay -x 8100 8100
+```
+
+### Run WebDriverAgent
+command:`wdaproxy` invoke `xctest` and `relay`, with watchers to keep xctest always running
+
+```bash
+# 运行 XCTest 并在PC上监听8200端口转发到手机8100服务
+$ tidevice wdaproxy -B com.facebook.wda.WebDriverAgent.Runner --port 8200
+...logs...
+```
+
 Then you can connect with Appium or [facebook-wda](https://github.com/openatx/facebook-wda)
 
 *facebook-wda example code*
 
 ```python
 import wda
-c = wda.USBClient()
+c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
 
@@ -106,12 +124,6 @@ $ tidevice developer
 
 ### Other
 ```bash
-# proxy local tcp request to phone, alternative: iproxy
-$ tidevice relay 8100 8100
-
-# relay and show traffic data with hexdump
-$ tidevice relay -x 8100 8100
-
 # reboot device
 $ tidevice reboot
 
