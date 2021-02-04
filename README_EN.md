@@ -131,6 +131,9 @@ $ tidevice screenshot screenshot.jpg
 
 # TODO(ssx): collect performance
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
+
+# same as idevicesyslog
+$ tidevice syslog
 ```
 
 ## DEVELOP

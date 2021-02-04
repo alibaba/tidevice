@@ -140,6 +140,9 @@ $ tidevice screenshot screenshot.jpg
 
 # 性能采集 (TODO)
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
+
+# 输出日志 same as idevicesyslog
+$ tidevice syslog
 ```
 
 ## DEVELOP

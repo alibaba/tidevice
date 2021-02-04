@@ -26,6 +26,7 @@ import colored
 import requests
 from logzero import setup_logger
 
+from ._wdaproxy import WDAService
 from ._device import Device
 from ._ipautil import IPAReader
 from ._proto import MODELS, PROGRAM_NAME
@@ -289,8 +290,7 @@ def cmd_relay(args: argparse.Namespace):
 def cmd_wdaproxy(args: argparse.Namespace):
     """ start xctest and relay """
     d = _udid2device(args.udid)
-    from ._wdaproxy import WDAService
-
+    
     serv = WDAService(d, args.bundle_id)
     p = None
     if args.port:
@@ -307,6 +307,13 @@ def cmd_wdaproxy(args: argparse.Namespace):
     finally:
         p and p.terminate()
         serv.stop()
+
+
+def cmd_syslog(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    s = d.start_service("com.apple.syslog_relay")
+    while True:
+        print(s.recv().decode('utf-8'), end='', flush=True)
 
 
 def cmd_test(args: argparse.Namespace):
@@ -422,6 +429,7 @@ _commands = [
                   help='pc listen port, set to 0 to disable port forward')
          ],
          help='keep WDA running and relay WDA service to pc'),
+    dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 
