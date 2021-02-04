@@ -312,8 +312,16 @@ def cmd_wdaproxy(args: argparse.Namespace):
 def cmd_syslog(args: argparse.Namespace):
     d = _udid2device(args.udid)
     s = d.start_service("com.apple.syslog_relay")
-    while True:
-        print(s.recv().decode('utf-8'), end='', flush=True)
+        # print("SS")
+    try:
+        while True:
+            text = s.recv().decode('utf-8')
+            print(text, end='', flush=True)
+    except (BrokenPipeError, IOError):
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
 
 
 def cmd_test(args: argparse.Namespace):
