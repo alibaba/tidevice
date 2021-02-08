@@ -49,7 +49,7 @@ class IPAReader(zipfile.ZipFile):
 
     def get_infoplist(self) -> dict:
         finfo = self.get_infoplist_zipinfo()
-        with self.open(finfo, 'r') as fp:
+        with self.open(finfo, 'rb') as fp:
             return bplist.load(fp)
 
     def get_bundle_id(self) -> str:
