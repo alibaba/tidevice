@@ -529,6 +529,7 @@ class BaseDevice():
             local_device_support = get_app_dir("device-support")
             image_zip_path = os.path.join(local_device_support, version+".zip")
             if not os.path.isfile(image_zip_path):
+                # https://github.com/iGhibli/iOS-DeviceSupport
                 # https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/10.0.zip
                 _alias = {
                     "12.2": "12.2 (16E5212e).zip",
@@ -541,6 +542,7 @@ class BaseDevice():
                     "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
                     "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
                     "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
+                    "14.5": "14.4(FromXcode_12.5_beta_xip).zip",
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
                 origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
