@@ -117,6 +117,51 @@ c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
 
+### 运行XCTest UITest
+这个不是Unit Tests，而是UITests。具体可以看这里的解释说明 <https://fbidb.io/docs/test-execution>
+
+以这个项目为例: https://github.com/FeiHuang93/XCTest-Demo
+应用分为执行测试的应用 testXCTestUITests 和 被测应用 testXCTest
+
+执行方法
+
+```bash
+$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+# ... 省略一部分不重要的信息 ...
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
+[I 210301 15:37:07 _device:984] Test runner ready detected
+[I 210301 15:37:07 _device:976] Start execute test plan with IDE version: 29
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'All tests' started at 2021-03-01 15:37:08.009
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' started at 2021-03-01 15:37:08.010
+    XCTestOutputBarrierTest Suite 'testXCTestUITests' started at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' started.
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Start Test at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Set Up
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:08.010828+0800 testXCTestUITests-Runner[81644:13765443] testExample start
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s     Open philhuang.testXCTest
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s         Launch philhuang.testXCTest
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Wait for accessibility to load
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Setting up automation session
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.10s             Wait for philhuang.testXCTest to idle
+[I 210301 15:37:09 _device:887] logProcess:     t =     1.13s Tear Down
+[I 210301 15:37:09 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' passed (1.337 seconds).
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests' passed at 2021-03-01 15:37:09.349.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.339) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' passed at 2021-03-01 15:37:09.350.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.340) seconds
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'All tests' passed at 2021-03-01 15:37:09.352.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.343) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:1059] xctrunner quited
+```
+
 ### 挂载开发者镜像
 这个步骤其实不太需要，因为如果tidevice的命令需要开发者镜像的时候，会自动去挂载的
 

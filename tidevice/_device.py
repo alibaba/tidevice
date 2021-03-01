@@ -768,6 +768,7 @@ class BaseDevice():
                     bundle_id: str,
                     session_identifier: uuid.UUID,
                     env: dict = {},
+                    target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None) -> int:  # pid
 
@@ -787,6 +788,7 @@ class BaseDevice():
         xctest_content = bplist.objc_encode(bplist.XCTestConfiguration({
             "testBundleURL": bplist.NSURL(None, f"file://{app_info['Path']}/PlugIns/{target_name}.xctest"),
             "sessionIdentifier": session_identifier,
+            "targetApplicationBundleID": target_app_bundle_id,
         }))  # yapf: disable
 
         fsync = self.app_sync(bundle_id)
@@ -809,7 +811,7 @@ class BaseDevice():
 
         xctestconfiguration_path = app_container + xctest_path  # "/tmp/WebDriverAgentRunner-" + str(session_identifier).upper() + ".xctestconfiguration"
         logger.debug("AppPath: %s", app_path)
-        logger.debug("AppContainer: %s", app_container)
+        logger.info("AppContainer: %s", app_container)
         app_env = {
             'CA_ASSERT_MAIN_THREAD_TRANSACTIONS': '0',
             'CA_DEBUG_TRANSACTIONS': '0',
@@ -825,6 +827,8 @@ class BaseDevice():
             # '__XPC_DYLD_LIBRARY_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             'MJPEG_SERVER_PORT': '',
             'USE_PORT': '',
+            # maybe no needed
+            'LLVM_PROFILE_FILE': app_container + "/tmp/%p.profraw", # %p means pid
         } # yapf: disable
         app_env.update(env)
 
@@ -879,11 +883,17 @@ class BaseDevice():
             if m.flags == 0x02:
                 method, args = m.result
                 if method == 'outputReceived:fromProcess:atTime:':
-                    logger.debug("Output: %s", args[0].strip())
+                    # logger.info("Output: %s", args[0].strip())
+                    logger.info("logProcess: %s", args[0].rstrip())
                     # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
                     if "ServerURLHere" in args[0]:
                         logger.info("WebDriverAgent start successfully")
 
+        def _log_message_callback(m: DTXMessage):
+            identifier, args = m.result
+            logger.info("logConsole: %s", args)
+
+        conn.register_callback("_XCT_logDebugMessage:", _log_message_callback)
         conn.register_callback(Event.NOTIFICATION, _callback)
         if quit_event:
             conn.register_callback(Event.FINISHED, lambda _: quit_event.set())
@@ -908,14 +918,18 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None, env: dict={}):
+    def xctest(self, fuzzy_bundle_id="com.facebook.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
+
+        Args:
+            target_bundle_id (str): optional, launch WDA-UITests will not need it
+            env: launch env
         """
         if not logger:
             logger = setup_logger(level=logging.INFO)
         
-        bundle_id = self._fnmatch_find_bundle_id(bundle_id)
+        bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
 
         logger.info("DeviceIdentifier: %s", self.udid)
@@ -988,8 +1002,10 @@ class BaseDevice():
 
         # launch test app
         # index: 1540
-
-        pid = self._launch_app_runner(bundle_id, session_identifier, env=env, logger=logger)
+        xclogger = setup_logger(name='xctest')
+        pid = self._launch_app_runner(bundle_id, session_identifier,
+            target_app_bundle_id=target_bundle_id,
+            env=env, logger=xclogger)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored
@@ -1040,7 +1056,7 @@ class BaseDevice():
         # on windows threading.Event.wait can't handle ctrl-c
         while not quit_event.wait(.1):
             pass
-        logger.warning("xctrunner quited")
+        logger.info("xctrunner quited")
 
 
 Device = BaseDevice

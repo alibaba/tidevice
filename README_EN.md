@@ -111,6 +111,49 @@ c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
 
+### Run UITests
+Demo <https://github.com/FeiHuang93/XCTest-Demo>
+
+- `philhuang.testXCTestUITests.xctrunner` is the test to launch
+- `philhuang.testXCTest` is the app to test
+ 
+ ```bash
+$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+# ... ignore some not important part ...
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
+[I 210301 15:37:07 _device:984] Test runner ready detected
+[I 210301 15:37:07 _device:976] Start execute test plan with IDE version: 29
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'All tests' started at 2021-03-01 15:37:08.009
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' started at 2021-03-01 15:37:08.010
+    XCTestOutputBarrierTest Suite 'testXCTestUITests' started at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' started.
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Start Test at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Set Up
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:08.010828+0800 testXCTestUITests-Runner[81644:13765443] testExample start
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s     Open philhuang.testXCTest
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s         Launch philhuang.testXCTest
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Wait for accessibility to load
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Setting up automation session
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.10s             Wait for philhuang.testXCTest to idle
+[I 210301 15:37:09 _device:887] logProcess:     t =     1.13s Tear Down
+[I 210301 15:37:09 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' passed (1.337 seconds).
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests' passed at 2021-03-01 15:37:09.349.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.339) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' passed at 2021-03-01 15:37:09.350.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.340) seconds
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'All tests' passed at 2021-03-01 15:37:09.352.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.343) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:1059] xctrunner quited
+```
+
 ### Mount DeveloperDiskImage
 ```bash
 # Find in /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/

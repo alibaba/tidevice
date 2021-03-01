@@ -184,7 +184,7 @@ class XCTestConfiguration(NSBaseObject):
         'targetApplicationArguments': [],  # maybe useless
         'targetApplicationBundleID': None,
         'targetApplicationEnvironment': None,
-        'targetApplicationPath': None,
+        'targetApplicationPath': "/whatever-it-does-not-matter/but-should-not-be-empty",
         'testApplicationDependencies': {},
         'testApplicationUserOverrides': None,
         'testBundleRelativePath': None,
