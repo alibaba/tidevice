@@ -165,6 +165,57 @@ $ tidevice developer
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
 ```
 
+### Check device info
+```bash
+$ tidevice info
+
+# check device power info
+$ tidevice info --domain com.apple.mobile.battery --json
+{
+    "BatteryCurrentCapacity": 53,
+    "BatteryIsCharging": true,
+    "ExternalChargeCapable": true,
+    "ExternalConnected": true,
+    "FullyCharged": false,
+    "GasGaugeCapability": true,
+    "HasBattery": true
+}
+```
+
+Known domains are:
+
+```text
+com.apple.disk_usage
+com.apple.disk_usage.factory
+com.apple.mobile.battery
+com.apple.iqagent
+com.apple.purplebuddy
+com.apple.PurpleBuddy
+com.apple.mobile.chaperone
+com.apple.mobile.third_party_termination
+com.apple.mobile.lockdownd
+com.apple.mobile.lockdown_cache
+com.apple.xcode.developerdomain
+com.apple.international
+com.apple.mobile.data_sync
+com.apple.mobile.tethered_sync
+com.apple.mobile.mobile_application_usage
+com.apple.mobile.backup
+com.apple.mobile.nikita
+com.apple.mobile.restriction
+com.apple.mobile.user_preferences
+com.apple.mobile.sync_data_class
+com.apple.mobile.software_behavior
+com.apple.mobile.iTunes.SQLMusicLibraryPostProcessCommands
+com.apple.mobile.iTunes.accessories
+com.apple.mobile.internal
+com.apple.mobile.wireless_lockdown
+com.apple.fairplay
+com.apple.iTunes
+com.apple.mobile.iTunes.store
+com.apple.mobile.iTunes
+```
+
 ### Other
 ```bash
 # reboot device

@@ -11,18 +11,18 @@ import logging
 import os
 import pprint
 import re
-import ssl
-import sys
 import shutil
+import ssl
 import subprocess
+import sys
 import tempfile
 import threading
 import time
 import typing
 import uuid
+import zipfile
 from collections import namedtuple
 from typing import Iterator, Optional, Tuple, Union
-import zipfile
 
 import requests
 from cached_property import cached_property
@@ -35,11 +35,12 @@ from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
                            ServiceInstruments)
 from ._ipautil import IPAReader
+from ._ssl import make_certs_and_key
 from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir, get_binary_by_name
+from ._utils import ProgressReader, get_app_dir
 from .exceptions import *
 
 logger = setup_logger(PROGRAM_NAME,
@@ -81,6 +82,7 @@ class BaseDevice():
             self._usbmux = Usbmux(usbmux)
         elif isinstance(usbmux, Usbmux):
             self._usbmux = usbmux
+
         self._udid = udid
         self._info = self.info
         self._lock = threading.Lock()
@@ -119,6 +121,10 @@ class BaseDevice():
     @property
     def udid(self) -> str:
         return self._udid
+    
+    @property
+    def devid(self) -> int:
+        return self._info['DeviceID']
 
     @property
     def pair_record(self) -> dict:
@@ -176,12 +182,49 @@ class BaseDevice():
         Same as idevicepair pair
         iconsole is a github project, hosted in https://github.com/anonymous5l/iConsole
         """
-        iconsole_path = get_binary_by_name("iconsole")
-        if not os.path.isfile(iconsole_path):
-            raise MuxError("Unable to pair without iconsole")
-        output = subprocess.check_output([iconsole_path, 'afc', '-u', self.udid, 'space']).decode('utf-8')
-        if 'TotalSpace:' not in output:
-            raise MuxError("Pair: " + output)
+        device_public_key = self.get_value("DevicePublicKey", no_session=True)
+        if not device_public_key:
+            raise MuxError("Unable to retrieve DevicePublicKey")
+        buid = self._usbmux.read_system_BUID()
+        wifi_address = self.get_value("WiFiAddress", no_session=True)
+
+        cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
+        pair_record = {
+            'DevicePublicKey': device_public_key,
+            'DeviceCertificate': dev_cert_pem,
+            'HostCertificate': cert_pem,
+            'HostID': str(uuid.uuid4()).upper(),
+            'RootCertificate': cert_pem,
+            'SystemBUID': buid,
+        }
+
+        with self.create_inner_connection() as s:
+            ret = s.send_recv_packet({
+                "Request": "Pair",
+                "PairRecord": pair_record,
+                "Label": PROGRAM_NAME,
+                "ProtocolVersion": "2",
+                "PairingOptions": {
+                    "ExtendedPairingErrors": True,
+                }
+            })
+            assert ret, "Pair request got empty response"
+            if "Error" in ret:
+                # error could be "PasswordProtected" or "PairingDialogResponsePending"
+                raise MuxError("pair:", ret['Error'])
+
+            assert 'EscrowBag' in ret, ret
+            pair_record['HostPrivateKey'] = priv_key_pem
+            pair_record['EscrowBag'] = ret['EscrowBag']
+            pair_record['WiFiMACAddress'] = wifi_address
+        
+        self.usbmux.send_recv({
+            "MessageType": "SavePairRecord",
+            "PairRecordID": self.udid,
+            "PairRecordData": bplist.dumps(pair_record),
+            "DeviceID": self.devid,
+        })
+        return pair_record
 
     def handshake(self):
         """
@@ -191,8 +234,7 @@ class BaseDevice():
             self._pair_record = self._read_pair_record()
         except MuxReplyError as err:
             if err.reply_code == UsbmuxReplyCode.BadDevice:
-                self.pair()
-                self._pair_record = self._read_pair_record()
+                self._pair_record = self.pair()
 
     @property
     def ssl_pemfile_path(self):
@@ -298,6 +340,8 @@ class BaseDevice():
 
             s.send_packet({
                 "Request": "StopSession",
+                "ProtocolVersion": '2',
+                "Label": PROGRAM_NAME,
                 "SessionID": session_id,
             })
             s.recv_packet()
@@ -307,36 +351,39 @@ class BaseDevice():
         Args:
             domain: can be found in "ideviceinfo -h", eg: com.apple.disk_usage
         """
-        with self.create_session() as conn:
-            packet = {
-                "Request": "GetValue",
-                "Label": PROGRAM_NAME,
-            }
-            if domain:
-                packet["Domain"] = domain
-            ret = conn.send_recv_packet(packet)
-            return ret['Value']
+        return self.get_value(domain=domain)
+        # with self.create_session() as conn:
+        #     packet = {
+        #         "Request": "GetValue",
+        #         "Label": PROGRAM_NAME,
+        #     }
+        #     if domain:
+        #         packet["Domain"] = domain
+        #     ret = conn.send_recv_packet(packet)
+        #     return ret['Value']
 
-    def get_value(self, key: str, no_session: bool = False):
+    def get_value(self, key: str = '', domain: str = "", no_session: bool = False):
         """ key can be: ProductVersion
         Args:
+            domain (str): com.apple.disk_usage
             no_session: set to True when not paired
         """
+        request = {
+            "Request": "GetValue",
+            "Label": PROGRAM_NAME,
+        }
+        if key:
+            request['Key'] = key
+        if domain:
+            request['Domain'] = domain
+
         if no_session:
             with self.create_inner_connection() as s:
-                ret = s.send_recv_packet({
-                    "Request": "GetValue",
-                    "Key": key,
-                    "Label": PROGRAM_NAME,
-                })
+                ret = s.send_recv_packet(request)
                 return ret['Value']
         else:
             with self.create_session() as conn:
-                ret = conn.send_recv_packet({
-                    "Request": "GetValue",
-                    "Key": key,
-                    "Label": PROGRAM_NAME,
-                })
+                ret = conn.send_recv_packet(request)
                 return ret['Value']
 
     def screen_info(self) -> tuple:

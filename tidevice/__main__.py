@@ -92,24 +92,24 @@ def cmd_list(args: argparse.Namespace):
 
 def cmd_device_info(args: argparse.Namespace):
     d = _udid2device(args.udid)
-    dinfo = d.device_info()
+    value = d.get_value(no_session=args.simple, key=args.key, domain=args.domain)
     if args.json:
-
         def _bytes_hook(obj):
             if isinstance(obj, bytes):
                 return base64.b64encode(obj).decode()
-
-        print(json.dumps(dinfo, indent=4, default=_bytes_hook))
+        print(json.dumps(value, indent=4, default=_bytes_hook))
+    elif args.key or args.domain:
+        pprint(value)
     else:
-        print("{:17s} {}".format("ProductName:",
-                                 MODELS.get(dinfo['ProductType'])))
+        print("{:17s} {}".format("MarketName:",
+                                 MODELS.get(value['ProductType'])))
         for attr in ('DeviceName', 'ProductVersion', 'ProductType',
                      'ModelNumber', 'SerialNumber', 'PhoneNumber',
                      'CPUArchitecture', 'ProductName', 'ProtocolVersion',
                      'RegionInfo', 'TimeIntervalSince1970', 'TimeZone',
                      'UniqueDeviceID', 'WiFiAddress', 'BluetoothAddress',
                      'BasebandVersion'):
-            print("{:17s} {}".format(attr + ":", dinfo.get(attr)))
+            print("{:17s} {}".format(attr + ":", value.get(attr)))
 
 
 def cmd_version(args: argparse.Namespace):
@@ -354,7 +354,10 @@ _commands = [
          flags=[
              dict(args=['--json'],
                   action='store_true',
-                  help="output as json format")
+                  help="output as json format"),
+            dict(args=['-s', '--simple'], action='store_true', help='use a simple connection to avoid auto-pairing with the device'),
+            dict(args=['-k', '--key'], type=str, help='only query specified KEY'),
+            dict(args=['--domain'], help='set domain of query to NAME.'),
          ],
          help="show device info"),
     dict(action=cmd_system_info,
