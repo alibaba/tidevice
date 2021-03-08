@@ -35,7 +35,6 @@ from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
                            ServiceInstruments)
 from ._ipautil import IPAReader
-from ._ssl import make_certs_and_key
 from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
@@ -187,6 +186,13 @@ class BaseDevice():
             raise MuxError("Unable to retrieve DevicePublicKey")
         buid = self._usbmux.read_system_BUID()
         wifi_address = self.get_value("WiFiAddress", no_session=True)
+
+        try:
+            from ._ssl import make_certs_and_key
+        except ImportError:
+            print("DevicePair require pyOpenSSL and pyans1, install by the following command")
+            print("\tpip3 install pyOpenSSL pyans1", flush=True)
+            raise RuntimeError("Missing lib")
 
         cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
         pair_record = {

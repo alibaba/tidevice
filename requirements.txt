@@ -14,8 +14,10 @@ Pillow
 requests
 colored
 packaging
-pyOpenSSL #>=20.0.1
-pyasn1 #>=0.4.8
+
+# pyOpenSSL requires cryptography which only have cp36.whl on windows
+pyOpenSSL; sys_platform != 'win32' #>=20.0.1
+pyasn1; sys_platform != 'win32' #>=0.4.8
 
 tornado
 simple_tornado
