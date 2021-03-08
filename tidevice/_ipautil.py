@@ -3,6 +3,9 @@
 #
 
 import re
+import sys
+import tempfile
+import shutil
 import typing
 import zipfile
 from typing import Union
@@ -50,6 +53,12 @@ class IPAReader(zipfile.ZipFile):
     def get_infoplist(self) -> dict:
         finfo = self.get_infoplist_zipinfo()
         with self.open(finfo, 'r') as fp:
+            if sys.version_info[:2] <= (3, 6):
+                # for compatiable with py3.6
+                with tempfile.TemporaryFile() as tmpf:
+                    shutil.copyfileobj(fp, tmpf)
+                    tmpf.seek(0)
+                    return bplist.load(tmpf)
             return bplist.load(fp)
 
     def get_bundle_id(self) -> str:

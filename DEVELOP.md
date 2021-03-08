@@ -7,6 +7,14 @@ Clone code to local
 git clone --depth 5 https://github.com/alibaba/tidevice
 ```
 
+## Certificate
+[各种安全证书间的关系及相关操作](https://www.jianshu.com/p/96df7de54375)
+
+
+## Pair
+1. Retrieve **Device Public Key** from device
+2. Generate **Host Key**
+
 ## View DeveloperDiskImage Content
 For example
 
