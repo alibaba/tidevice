@@ -327,6 +327,11 @@ def cmd_syslog(args: argparse.Namespace):
         os.dup2(devnull, sys.stdout.fileno())
 
 
+def cmd_pair(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    pair_record = d.pair()
+    print("Paired with device", d.udid, "HostID:", pair_record['HostID'])
+
 def cmd_test(args: argparse.Namespace):
 
     print("Just test")
@@ -446,6 +451,7 @@ _commands = [
          ],
          help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),
+    dict(action=cmd_pair, command='pair', help='pair device'),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 
