@@ -29,7 +29,7 @@ from logzero import setup_logger
 from ._wdaproxy import WDAService
 from ._device import Device
 from ._ipautil import IPAReader
-from ._proto import MODELS, PROGRAM_NAME
+from ._proto import MODELS, PROGRAM_NAME, LOG
 from ._relay import relay
 from ._usbmux import Usbmux
 from ._utils import get_app_dir, get_binary_by_name, is_atty
@@ -200,6 +200,9 @@ def cmd_xctest(args: argparse.Namespace):
     """
     Run XCTest required WDA installed.
     """
+    if args.debug:
+        setup_logger(LOG.xctest, level=logging.DEBUG)
+
     d = _udid2device(args.udid)
     env = {}
     for kv in args.env or {}:
@@ -393,6 +396,7 @@ _commands = [
     dict(action=cmd_xctest,
          command="xctest",
          flags=[
+             dict(args=['--debug'], action='store_true', help='show debug log'),
              dict(args=['-B', '--bundle_id', '--bundle-id'],
                   default="com.facebook.*.xctrunner",
                   help="bundle id of the test to launch"),
@@ -492,6 +496,9 @@ def main():
         # show_upgrade_message()
         return
 
+    # log setup
+    setup_logger(LOG.main, level=logging.INFO)
+    
     global um
     um = Usbmux(args.socket)
     actions[args.subparser](args)

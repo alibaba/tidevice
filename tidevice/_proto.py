@@ -5,10 +5,15 @@
 __all__ = [
     'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
-    "UsbmuxReplyCode", "InstrumentsService"
+    "UsbmuxReplyCode", "InstrumentsService", "LOG"
 ]
 
 import enum
+
+
+class LOG(str, enum.Enum):
+    main = "tidevice"
+    xctest = "tidevice.xctest"
 
 
 class Color(enum.Enum):

@@ -85,8 +85,8 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
-# Change WDA listen port to 8200
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
+# Change WDA listen port to 8200 and show debug log
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
 ```
 
 ### Relay

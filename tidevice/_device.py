@@ -825,6 +825,8 @@ class BaseDevice():
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None) -> int:  # pid
 
+        logger = logging.getLogger(LOG.xctest)
+
         app_info = self.installation.lookup(bundle_id)
         sign_identity = app_info.get("SignerIdentity", "")
         logger.info("SignIdentity: %r", sign_identity)
@@ -937,14 +939,14 @@ class BaseDevice():
                 method, args = m.result
                 if method == 'outputReceived:fromProcess:atTime:':
                     # logger.info("Output: %s", args[0].strip())
-                    logger.info("logProcess: %s", args[0].rstrip())
+                    logger.debug("logProcess: %s", args[0].rstrip())
                     # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
                     if "ServerURLHere" in args[0]:
                         logger.info("WebDriverAgent start successfully")
 
         def _log_message_callback(m: DTXMessage):
             identifier, args = m.result
-            logger.info("logConsole: %s", args)
+            logger.debug("logConsole: %s", args)
 
         conn.register_callback("_XCT_logDebugMessage:", _log_message_callback)
         conn.register_callback(Event.NOTIFICATION, _callback)
