@@ -20,7 +20,13 @@ Command line tool to communicate with iOS device, support the following function
 Support platform: Mac, Linux, Windows
 
 ## Install
-Python 3.7+
+Python 3.6+
+
+```bash
+pip3 install -U "tidevice[openssl]"   # Recommend
+```
+
+The extra *openssl*, contains device pair support. If can install it, try
 
 ```bash
 pip3 install -U tidevice

@@ -38,6 +38,7 @@ Ref: https://packaging.python.org/guides/publishing-package-distribution-release
 
 
 ## References
+- https://www.theiphonewiki.com/wiki/Usbmux
 - C implementation <https://github.com/libimobiledevice>
 - Python implement of libimobiledevice: <https://github.com/iOSForensics/pymobiledevice>
 - Apple Device Images: <https://github.com/iGhibli/iOS-DeviceSupport>

@@ -21,7 +21,13 @@
 
 ## 安装
 
-Python 3.7+
+Python 3.6+
+
+```bash
+pip3 install -U "tidevice[openssl]"   # Recommend
+```
+
+如果上面的命令提示安装失败，就试试下面的命令。（不过这种方法安装，配对功能就没有了，因为没有办法进行签名）
 
 ```bash
 pip3 install -U tidevice

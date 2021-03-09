@@ -104,13 +104,13 @@ class PlistSocket(SafeStreamSocket):
     def is_secure(self):
         return isinstance(self._sock, ssl.SSLSocket)
 
-    def send_packet(self, payload: dict, reqtype: int = 8):
+    def send_packet(self, payload: dict, message_type: int = 8):
         """
         Args:
             payload: required
 
             # The following args only used in the first request
-            reqtype: request type, always 8 
+            message_type: 8 (Plist)
             tag: int
         """
         #if self.is_secure():
@@ -122,7 +122,7 @@ class PlistSocket(SafeStreamSocket):
         if self._first:  # first package
             length = 16 + len(body_data)
             header = struct.pack(
-                "IIII", length, 1, reqtype,
+                "IIII", length, 1, message_type,
                 self._tag)  # version: 1, request: 8(?), tag: 1(?)
         else:
             header = struct.pack(">I", len(body_data))
