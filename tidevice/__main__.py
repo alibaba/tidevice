@@ -87,7 +87,17 @@ def cmd_list(args: argparse.Namespace):
             print(udid, name)
         result.append(dict(udid=udid, name=name))
     if args.json:
-        print(json.dumps(result, indent=4, ensure_ascii=False))
+        _print_json(result)
+
+
+def _print_json(value):
+    def _bytes_hook(obj):
+        if isinstance(obj, bytes):
+            return base64.b64encode(obj).decode()
+        else:
+            return str(obj)
+
+    print(json.dumps(value, indent=4, ensure_ascii=False, default=_bytes_hook))
 
 
 def cmd_device_info(args: argparse.Namespace):
@@ -96,12 +106,7 @@ def cmd_device_info(args: argparse.Namespace):
                         key=args.key,
                         domain=args.domain)
     if args.json:
-
-        def _bytes_hook(obj):
-            if isinstance(obj, bytes):
-                return base64.b64encode(obj).decode()
-
-        print(json.dumps(value, indent=4, default=_bytes_hook))
+        _print_json(value)
     elif args.key or args.domain:
         pprint(value)
     else:
@@ -139,6 +144,11 @@ def cmd_uninstall(args: argparse.Namespace):
 def cmd_reboot(args: argparse.Namespace):
     d = _udid2device(args.udid)
     print(d.reboot())
+
+
+def cmd_shutdown(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    print(d.shutdown())
 
 
 def cmd_parse(args: argparse.Namespace):
@@ -227,12 +237,15 @@ def cmd_screenshot(args: argparse.Namespace):
     d.screenshot().convert("RGB").save(filename)
 
 
-def cmd_appinfo(args: argparse.Namespace):
+def cmd_app_info(args: argparse.Namespace):
     d = _udid2device(args.udid)
     info = d.installation.lookup(args.bundle_id)
     if info is None:
         sys.exit(1)
-    pprint(info)
+    if args.json:
+        _print_json(info)
+    else:
+        pprint(info)
 
 
 def cmd_applist(args: argparse.Namespace):
@@ -286,6 +299,15 @@ def cmd_system_info(args):
     pprint(sinfo)
 
 
+def cmd_battery(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    power_info = d.get_io_power()
+    if args.json:
+        _print_json(power_info)
+    else:
+        pprint(power_info)
+
+
 def cmd_developer(args: argparse.Namespace):
     d = _udid2device(args.udid)
     d.mount_developer_image()
@@ -334,10 +356,65 @@ def cmd_syslog(args: argparse.Namespace):
         os.dup2(devnull, sys.stdout.fileno())
 
 
+def cmd_dump_fps(args):
+    d = _udid2device(args.udid)
+    for data in d.instruments.iter_opengl_data():
+        if isinstance(data, str):
+            continue
+        fps = data['CoreAnimationFramesPerSecond']
+        print("{:>2d} {}".format(fps, "-" * fps))
+
+
 def cmd_pair(args: argparse.Namespace):
     d = _udid2device(args.udid)
     pair_record = d.pair()
     print("Paired with device", d.udid, "HostID:", pair_record['HostID'])
+
+
+def cmd_fsync(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    if args.bundle_id:
+        sync = d.app_sync(args.bundle_id)
+    else:
+        sync = d.sync
+
+    arg0 = args.arguments[0]
+    if args.command == 'ls':
+        pprint(sync.listdir(arg0))
+    elif args.command == 'rm':
+        for arg in args.arguments:
+            pprint(sync.remove(arg))
+    elif args.command == 'stat':
+        finfo = sync.stat(arg0)
+        print("Fmt:", finfo.st_ifmt)
+        print("CTime:", finfo.st_ctime)
+        print("MTime:", finfo.st_mtime)
+        print("Size:", finfo.st_size)
+    elif args.command == 'tree':
+        sync.treeview(arg0, depth=-1)
+    elif args.command == 'pull':
+        data = sync.pull_content(arg0)
+        with open(os.path.basename(arg0), 'wb') as f:
+            f.write(data)
+        print("pulled to", os.path.basename(arg0))
+    elif args.command == 'cat':
+        for chunk in sync.iter_content(arg0):
+            sys.stdout.write(chunk.decode('utf-8'))
+            sys.stdout.flush()
+    elif args.command == 'push':
+        local_path = args.arguments[0]
+        device_path = args.arguments[1]
+        assert os.path.isfile(local_path)
+        with open(local_path, "rb") as f:
+            content = f.read()
+            sync.push_content(device_path, content)
+            print("pushed to", device_path)
+    elif args.command == 'rmtree':
+        pprint(sync.rmtree(arg0))
+    elif args.command == 'mkdir':
+        pprint(sync.mkdir(arg0))
+    else:
+        raise NotImplementedError()
 
 
 def cmd_test(args: argparse.Namespace):
@@ -384,6 +461,28 @@ _commands = [
     dict(action=cmd_system_info,
          command="sysinfo",
          help="show device system info"),
+    dict(action=cmd_app_info,
+         command="appinfo",
+         flags=[
+             dict(args=['--json'],
+                  action='store_true',
+                  help='format output as json'),
+             dict(args=['bundle_id'], help='bundle identifier'),
+         ],
+         help="inspect app info"),
+    dict(action=cmd_applist, command="applist", help="list packages"),
+    dict(action=cmd_battery,
+         command='battery',
+         flags=[
+             dict(args=['--json'],
+                  action='store_true',
+                  help='format output as json')
+         ],
+         help='show battery info'),
+    dict(action=cmd_screenshot,
+         command="screenshot",
+         help="take screenshot",
+         flags=[dict(args=['filename'], nargs="?", help="output filename")]),
     dict(action=cmd_install,
          command="install",
          flags=[
@@ -398,6 +497,7 @@ _commands = [
          flags=[dict(args=['bundle_id'], help="bundle_id of application")],
          help="uninstall application"),
     dict(action=cmd_reboot, command="reboot", help="reboot device"),
+    dict(action=cmd_shutdown, command="shutdown", help="shutdown device"),
     dict(action=cmd_parse,
          command="parse",
          flags=[dict(args=['uri'], help="local path or url")],
@@ -406,29 +506,6 @@ _commands = [
     dict(action=cmd_wait_for_device,
          command='wait-for-device',
          help='wait for device attached'),
-    dict(action=cmd_xctest,
-         command="xctest",
-         flags=[
-             dict(args=['--debug'], action='store_true',
-                  help='show debug log'),
-             dict(args=['-B', '--bundle_id', '--bundle-id'],
-                  default="com.facebook.*.xctrunner",
-                  help="bundle id of the test to launch"),
-             dict(args=['--target-bundle-id'],
-                  help='bundle id of the target app [optional]'),
-             dict(args=['-I', '--install-wda'],
-                  action='store_true',
-                  help='install webdriveragent app'),
-             dict(args=['-e', '--env'],
-                  action='append',
-                  help="set env with format key:value, support multi -e"),
-         ],
-         help="run XCTest"),
-    dict(action=cmd_screenshot,
-         command="screenshot",
-         help="take screenshot",
-         flags=[dict(args=['filename'], nargs="?", help="output filename")]),
-    dict(action=cmd_applist, command="applist", help="list packages"),
     dict(action=cmd_launch,
          command="launch",
          flags=[
@@ -439,9 +516,6 @@ _commands = [
              dict(args=['arguments'], nargs='*', help='app arguments'),
          ],
          help="launch app with bundle_id"),
-    dict(action=cmd_developer,
-         command="developer",
-         help="mount developer image to device"),
     dict(action=cmd_kill,
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],
@@ -456,6 +530,24 @@ _commands = [
              dict(args=['rport'], type=int, help='remote port'),
          ],
          help="relay phone inner port to pc, same as iproxy"),
+    dict(
+        action=cmd_xctest,
+        command="xctest",
+        flags=[
+            dict(args=['--debug'], action='store_true', help='show debug log'),
+            dict(args=['-B', '--bundle_id', '--bundle-id'],
+                 default="com.facebook.*.xctrunner",
+                 help="bundle id of the test to launch"),
+            dict(args=['--target-bundle-id'],
+                 help='bundle id of the target app [optional]'),
+            #  dict(args=['-I', '--install-wda'],
+            #       action='store_true',
+            #       help='install webdriveragent app'),
+            dict(args=['-e', '--env'],
+                 action='append',
+                 help="set env with format key:value, support multi -e"),
+        ],
+        help="run XCTest"),
     dict(action=cmd_wdaproxy,
          command='wdaproxy',
          flags=[
@@ -469,6 +561,22 @@ _commands = [
          ],
          help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),
+    dict(action=cmd_fsync,
+         command="fsync",
+         flags=[
+             dict(args=['-B', '--bundle_id'], help='app bundle id'),
+             dict(args=['command'],
+                  choices=[
+                      'ls', 'rm', 'cat', 'pull', 'push', 'stat', 'tree',
+                      'rmtree', 'mkdir'
+                  ]),
+             dict(args=['arguments'], nargs='+', help='command arguments'),
+         ],
+         help="app file management"),
+    dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),
+    dict(action=cmd_developer,
+         command="developer",
+         help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]

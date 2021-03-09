@@ -428,15 +428,17 @@ class BaseDevice():
             "Label": PROGRAM_NAME,
         })
         return ret['Status']
-
-    def get_io_power(self) -> dict:
+    
+    def shutdown(self):
         conn = self.start_service("com.apple.mobile.diagnostics_relay")
         ret = conn.send_recv_packet({
-            'EntryClass': 'IOPMPowerSource',
-            'Request': 'IORegistry',
+            "Request": "Shutdown",
             "Label": PROGRAM_NAME,
         })
-        return ret
+        return ret['Status']
+
+    def get_io_power(self) -> dict:
+        return self.get_io_registry('IOPMPowerSource')
 
     def get_io_registry(self, name: str) -> dict:
         conn = self.start_service("com.apple.mobile.diagnostics_relay")
