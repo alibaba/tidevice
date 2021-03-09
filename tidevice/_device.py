@@ -42,8 +42,8 @@ from ._usbmux import Usbmux
 from ._utils import ProgressReader, get_app_dir
 from .exceptions import *
 
-logger = setup_logger(PROGRAM_NAME,
-    level=logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
+
+logger = logging.getLogger(LOG.main)
 
 
 def pil_imread(data: Union[str, bytes, bytearray]) -> Image.Image:
