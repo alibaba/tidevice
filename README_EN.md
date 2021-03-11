@@ -20,6 +20,14 @@ Command line tool to communicate with iOS device, support the following function
 Support platform: Mac, Linux, Windows
 
 ## Install
+Python 3.6+
+
+```bash
+pip3 install -U "tidevice[openssl]"   # Recommend
+```
+
+The extra *openssl*, contains device pair support. If can install it, try
+
 ```bash
 pip3 install -U tidevice
 ```
@@ -50,7 +58,9 @@ $ tidevice list --json
 ### App management
 ```bash
 $ tidevice install example.ipa
-$ tidevice install https://example.org/example.ipa
+
+# Specify device udid to install
+$ tidevice --udid $UDID install https://example.org/example.ipa
 
 $ tidevice uninstall com.example.demo
 
@@ -62,7 +72,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### Run WebDriverAgent
+### Run XCTest
 > Please make sure your iPhone already have [WebDriverAgent](https://github.com/appium/WebDriverAgent) installed
 
 ```bash
@@ -75,8 +85,26 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
-# Change WDA listen port to 8200
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
+# Change WDA listen port to 8200 and show debug log
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
+```
+
+### Relay
+```
+# proxy local tcp request to phone, alternative: iproxy
+$ tidevice relay 8100 8100
+
+# relay and show traffic data with hexdump
+$ tidevice relay -x 8100 8100
+```
+
+### Run WebDriverAgent
+command:`wdaproxy` invoke `xctest` and `relay`, with watchers to keep xctest always running
+
+```bash
+# 运行 XCTest 并在PC上监听8200端口转发到手机8100服务
+$ tidevice wdaproxy -B com.facebook.wda.WebDriverAgent.Runner --port 8200
+...logs...
 ```
 
 Then you can connect with Appium or [facebook-wda](https://github.com/openatx/facebook-wda)
@@ -85,8 +113,51 @@ Then you can connect with Appium or [facebook-wda](https://github.com/openatx/fa
 
 ```python
 import wda
-c = wda.USBClient()
+c = wda.Client("http://localhost:8200")
 print(c.info)
+```
+
+### Run UITests
+Demo <https://github.com/FeiHuang93/XCTest-Demo>
+
+- `philhuang.testXCTestUITests.xctrunner` is the test to launch
+- `philhuang.testXCTest` is the app to test
+ 
+ ```bash
+$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+# ... ignore some not important part ...
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
+[I 210301 15:37:07 _device:984] Test runner ready detected
+[I 210301 15:37:07 _device:976] Start execute test plan with IDE version: 29
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'All tests' started at 2021-03-01 15:37:08.009
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' started at 2021-03-01 15:37:08.010
+    XCTestOutputBarrierTest Suite 'testXCTestUITests' started at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' started.
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Start Test at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Set Up
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:08.010828+0800 testXCTestUITests-Runner[81644:13765443] testExample start
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s     Open philhuang.testXCTest
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s         Launch philhuang.testXCTest
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Wait for accessibility to load
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Setting up automation session
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.10s             Wait for philhuang.testXCTest to idle
+[I 210301 15:37:09 _device:887] logProcess:     t =     1.13s Tear Down
+[I 210301 15:37:09 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' passed (1.337 seconds).
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests' passed at 2021-03-01 15:37:09.349.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.339) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' passed at 2021-03-01 15:37:09.350.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.340) seconds
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'All tests' passed at 2021-03-01 15:37:09.352.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.343) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:1059] xctrunner quited
 ```
 
 ### Mount DeveloperDiskImage
@@ -100,6 +171,57 @@ $ tidevice developer
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
 ```
 
+### Check device info
+```bash
+$ tidevice info
+
+# check device power info
+$ tidevice info --domain com.apple.mobile.battery --json
+{
+    "BatteryCurrentCapacity": 53,
+    "BatteryIsCharging": true,
+    "ExternalChargeCapable": true,
+    "ExternalConnected": true,
+    "FullyCharged": false,
+    "GasGaugeCapability": true,
+    "HasBattery": true
+}
+```
+
+Known domains are:
+
+```text
+com.apple.disk_usage
+com.apple.disk_usage.factory
+com.apple.mobile.battery
+com.apple.iqagent
+com.apple.purplebuddy
+com.apple.PurpleBuddy
+com.apple.mobile.chaperone
+com.apple.mobile.third_party_termination
+com.apple.mobile.lockdownd
+com.apple.mobile.lockdown_cache
+com.apple.xcode.developerdomain
+com.apple.international
+com.apple.mobile.data_sync
+com.apple.mobile.tethered_sync
+com.apple.mobile.mobile_application_usage
+com.apple.mobile.backup
+com.apple.mobile.nikita
+com.apple.mobile.restriction
+com.apple.mobile.user_preferences
+com.apple.mobile.sync_data_class
+com.apple.mobile.software_behavior
+com.apple.mobile.iTunes.SQLMusicLibraryPostProcessCommands
+com.apple.mobile.iTunes.accessories
+com.apple.mobile.internal
+com.apple.mobile.wireless_lockdown
+com.apple.fairplay
+com.apple.iTunes
+com.apple.mobile.iTunes.store
+com.apple.mobile.iTunes
+```
+
 ### Other
 ```bash
 # reboot device
@@ -109,6 +231,9 @@ $ tidevice screenshot screenshot.jpg
 
 # TODO(ssx): collect performance
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
+
+# same as idevicesyslog
+$ tidevice syslog
 ```
 
 ## DEVELOP

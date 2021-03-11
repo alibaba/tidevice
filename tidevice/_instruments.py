@@ -528,9 +528,9 @@ class DTXService(PlistSocket):
             if identifier == '_requestChannelWithCode:identifier:':
                 return self._reply_null(m)
 
-            if identifier == "_XCT_logDebugMessage:":
-                logger.debug("logDebugMessage: %s", args)
-                self._reply_null(m)
+            # if identifier == "_XCT_logDebugMessage:":
+            #     logger.debug("logDebugMessage: %s", args)
+            #     self._reply_null(m)
 
             # logger.warning("Callback: identifier: %s", m.result) # TODO
             if self._call_handlers(identifier, m):
@@ -557,7 +557,7 @@ class DTXService(PlistSocket):
                 try:
                     self._drain_single_message()
                 except MuxError as e:
-                    logger.warning("unexpected error: %s", e)
+                    # logger.warning("unexpected error: %s", e)
                     break
                 except:
                     if not self._stop_event.is_set():
@@ -585,26 +585,28 @@ class DTXService(PlistSocket):
                           channel_id=mheader.channel,
                           flags=flags,
                           result=result)
-        logger.debug("DTXMessage: %s", dtxm.result)
+        
+        logger.debug("DTXMessage: expects_reply:%d flags:%d %s", mheader.expects_reply, dtxm.flags, dtxm.result)
+
         if mheader.conversation_index == 1:  # reply from server
             self._reply_queues[mheader.message_id].put(dtxm)
         elif mheader.conversation_index == 0:
             # handle request
             if mheader.expects_reply == 0:  # notification from server
-                if not self._call_handlers(Event.NOTIFICATION, dtxm):
-                    if dtxm.flags == 0x02 and dtxm.result[
-                            0] == '_notifyOfPublishedCapabilities:':
-                        # 公共方法消息，直接忽略
-                        return
-                    logger.debug(
-                        "Ignore notification from server: %d, 0x%x, %s",
-                        dtxm.message_id, dtxm.flags, dtxm.result)
-                return
-
-            handled = self._handle_dtx_message(dtxm)
-            if not handled:
-                logger.debug("server request not handled: %s", dtxm.result)
-                self._reply_null(dtxm)
+                if self._call_handlers(Event.NOTIFICATION, dtxm):
+                    return
+                if dtxm.flags == 0x02 and dtxm.result[
+                        0] == '_notifyOfPublishedCapabilities:':
+                    # 公共方法消息，直接忽略
+                    return
+                logger.debug(
+                    "Ignore notification from server: %d, 0x%x, %s",
+                    dtxm.message_id, dtxm.flags, dtxm.result)
+            else:
+                handled = self._handle_dtx_message(dtxm)
+                if not handled:
+                    logger.debug("server request not handled: %s", dtxm.result)
+                    self._reply_null(dtxm)
         elif mheader.conversation_index == 2:
             # usally NSError message
             pass

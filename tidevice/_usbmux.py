@@ -80,7 +80,7 @@ class Usbmux:
         if 'Number' in data and data['Number'] != 0:
             raise MuxReplyError(data['Number'])
 
-    def read_system_BUID(self):
+    def read_system_BUID(self) -> str:
         """ BUID is always same """
         data = self.send_recv({
             'ClientVersionString': 'libusbmuxd 1.1.0',

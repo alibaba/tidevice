@@ -11,19 +11,18 @@ import logging
 import os
 import pprint
 import re
-import ssl
-import sys
 import shutil
+import ssl
 import subprocess
+import sys
 import tempfile
 import threading
 import time
 import typing
-import urllib.request
 import uuid
+import zipfile
 from collections import namedtuple
 from typing import Iterator, Optional, Tuple, Union
-import zipfile
 
 import requests
 from cached_property import cached_property
@@ -40,11 +39,11 @@ from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir, get_binary_by_name
+from ._utils import ProgressReader, get_app_dir
 from .exceptions import *
 
-logger = setup_logger(PROGRAM_NAME,
-    level=logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
+
+logger = logging.getLogger(LOG.main)
 
 
 def pil_imread(data: Union[str, bytes, bytearray]) -> Image.Image:
@@ -82,6 +81,7 @@ class BaseDevice():
             self._usbmux = Usbmux(usbmux)
         elif isinstance(usbmux, Usbmux):
             self._usbmux = usbmux
+
         self._udid = udid
         self._info = self.info
         self._lock = threading.Lock()
@@ -120,6 +120,10 @@ class BaseDevice():
     @property
     def udid(self) -> str:
         return self._udid
+    
+    @property
+    def devid(self) -> int:
+        return self._info['DeviceID']
 
     @property
     def pair_record(self) -> dict:
@@ -177,12 +181,56 @@ class BaseDevice():
         Same as idevicepair pair
         iconsole is a github project, hosted in https://github.com/anonymous5l/iConsole
         """
-        iconsole_path = get_binary_by_name("iconsole")
-        if not os.path.isfile(iconsole_path):
-            raise MuxError("Unable to pair without iconsole")
-        output = subprocess.check_output([iconsole_path, 'afc', '-u', self.udid, 'space']).decode('utf-8')
-        if 'TotalSpace:' not in output:
-            raise MuxError("Pair: " + output)
+        device_public_key = self.get_value("DevicePublicKey", no_session=True)
+        if not device_public_key:
+            raise MuxError("Unable to retrieve DevicePublicKey")
+        buid = self._usbmux.read_system_BUID()
+        wifi_address = self.get_value("WiFiAddress", no_session=True)
+
+        try:
+            from ._ssl import make_certs_and_key
+        except ImportError:
+            print("DevicePair require pyOpenSSL and pyans1, install by the following command")
+            print("\tpip3 install pyOpenSSL pyans1", flush=True)
+            raise RuntimeError("Missing lib")
+
+        cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
+        pair_record = {
+            'DevicePublicKey': device_public_key,
+            'DeviceCertificate': dev_cert_pem,
+            'HostCertificate': cert_pem,
+            'HostID': str(uuid.uuid4()).upper(),
+            'RootCertificate': cert_pem,
+            'SystemBUID': buid,
+        }
+
+        with self.create_inner_connection() as s:
+            ret = s.send_recv_packet({
+                "Request": "Pair",
+                "PairRecord": pair_record,
+                "Label": PROGRAM_NAME,
+                "ProtocolVersion": "2",
+                "PairingOptions": {
+                    "ExtendedPairingErrors": True,
+                }
+            })
+            assert ret, "Pair request got empty response"
+            if "Error" in ret:
+                # error could be "PasswordProtected" or "PairingDialogResponsePending"
+                raise MuxError("pair:", ret['Error'])
+
+            assert 'EscrowBag' in ret, ret
+            pair_record['HostPrivateKey'] = priv_key_pem
+            pair_record['EscrowBag'] = ret['EscrowBag']
+            pair_record['WiFiMACAddress'] = wifi_address
+        
+        self.usbmux.send_recv({
+            "MessageType": "SavePairRecord",
+            "PairRecordID": self.udid,
+            "PairRecordData": bplist.dumps(pair_record),
+            "DeviceID": self.devid,
+        })
+        return pair_record
 
     def handshake(self):
         """
@@ -192,8 +240,7 @@ class BaseDevice():
             self._pair_record = self._read_pair_record()
         except MuxReplyError as err:
             if err.reply_code == UsbmuxReplyCode.BadDevice:
-                self.pair()
-                self._pair_record = self._read_pair_record()
+                self._pair_record = self.pair()
 
     @property
     def ssl_pemfile_path(self):
@@ -299,6 +346,8 @@ class BaseDevice():
 
             s.send_packet({
                 "Request": "StopSession",
+                "ProtocolVersion": '2',
+                "Label": PROGRAM_NAME,
                 "SessionID": session_id,
             })
             s.recv_packet()
@@ -308,36 +357,39 @@ class BaseDevice():
         Args:
             domain: can be found in "ideviceinfo -h", eg: com.apple.disk_usage
         """
-        with self.create_session() as conn:
-            packet = {
-                "Request": "GetValue",
-                "Label": PROGRAM_NAME,
-            }
-            if domain:
-                packet["Domain"] = domain
-            ret = conn.send_recv_packet(packet)
-            return ret['Value']
+        return self.get_value(domain=domain)
+        # with self.create_session() as conn:
+        #     packet = {
+        #         "Request": "GetValue",
+        #         "Label": PROGRAM_NAME,
+        #     }
+        #     if domain:
+        #         packet["Domain"] = domain
+        #     ret = conn.send_recv_packet(packet)
+        #     return ret['Value']
 
-    def get_value(self, key: str, no_session: bool = False):
+    def get_value(self, key: str = '', domain: str = "", no_session: bool = False):
         """ key can be: ProductVersion
         Args:
+            domain (str): com.apple.disk_usage
             no_session: set to True when not paired
         """
+        request = {
+            "Request": "GetValue",
+            "Label": PROGRAM_NAME,
+        }
+        if key:
+            request['Key'] = key
+        if domain:
+            request['Domain'] = domain
+
         if no_session:
             with self.create_inner_connection() as s:
-                ret = s.send_recv_packet({
-                    "Request": "GetValue",
-                    "Key": key,
-                    "Label": PROGRAM_NAME,
-                })
+                ret = s.send_recv_packet(request)
                 return ret['Value']
         else:
             with self.create_session() as conn:
-                ret = conn.send_recv_packet({
-                    "Request": "GetValue",
-                    "Key": key,
-                    "Label": PROGRAM_NAME,
-                })
+                ret = conn.send_recv_packet(request)
                 return ret['Value']
 
     def screen_info(self) -> tuple:
@@ -376,15 +428,17 @@ class BaseDevice():
             "Label": PROGRAM_NAME,
         })
         return ret['Status']
-
-    def get_io_power(self) -> dict:
+    
+    def shutdown(self):
         conn = self.start_service("com.apple.mobile.diagnostics_relay")
         ret = conn.send_recv_packet({
-            'EntryClass': 'IOPMPowerSource',
-            'Request': 'IORegistry',
+            "Request": "Shutdown",
             "Label": PROGRAM_NAME,
         })
-        return ret
+        return ret['Status']
+
+    def get_io_power(self) -> dict:
+        return self.get_io_registry('IOPMPowerSource')
 
     def get_io_registry(self, name: str) -> dict:
         conn = self.start_service("com.apple.mobile.diagnostics_relay")
@@ -530,6 +584,7 @@ class BaseDevice():
             local_device_support = get_app_dir("device-support")
             image_zip_path = os.path.join(local_device_support, version+".zip")
             if not os.path.isfile(image_zip_path):
+                # https://github.com/iGhibli/iOS-DeviceSupport
                 # https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/10.0.zip
                 _alias = {
                     "12.2": "12.2 (16E5212e).zip",
@@ -541,6 +596,8 @@ class BaseDevice():
                     "14.1": "14.1(FromXcode12.1(12A7403)).zip",
                     "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
                     "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
+                    "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
+                    "14.5": "14.4(FromXcode_12.5_beta_xip).zip",
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
                 origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
@@ -762,12 +819,15 @@ class BaseDevice():
     def instruments(self) -> ServiceInstruments:
         return self.connect_instruments()
 
-    def _launch_wda(self,
+    def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
                     env: dict = {},
+                    target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None) -> int:  # pid
+
+        logger = logging.getLogger(LOG.xctest)
 
         app_info = self.installation.lookup(bundle_id)
         sign_identity = app_info.get("SignerIdentity", "")
@@ -775,11 +835,18 @@ class BaseDevice():
 
         app_container = app_info['Container']
 
-        xctest_path = "/tmp/WebDriverAgentRunner-" + str(session_identifier).upper() + ".xctestconfiguration" # yapf: disable
+        # CFBundleName always endswith -Runner
+        exec_name = app_info['CFBundleExecutable']
+        logger.info("CFBundleExecutable: %s", exec_name)
+        assert exec_name.endswith("-Runner"), "Invalid CFBundleExecutable: %s" % exec_name
+        target_name = exec_name[:-len("-Runner")]
+
+        xctest_path = f"/tmp/{target_name}-{str(session_identifier).upper()}.xctestconfiguration"  # yapf: disable
         xctest_content = bplist.objc_encode(bplist.XCTestConfiguration({
-            "testBundleURL": bplist.NSURL(None, "file://" + app_info['Path'] + "/PlugIns/WebDriverAgentRunner.xctest"),
+            "testBundleURL": bplist.NSURL(None, f"file://{app_info['Path']}/PlugIns/{target_name}.xctest"),
             "sessionIdentifier": session_identifier,
-        })) # yapf: disable
+            "targetApplicationBundleID": target_app_bundle_id,
+        }))  # yapf: disable
 
         fsync = self.app_sync(bundle_id)
         for fname in fsync.listdir("/tmp"):
@@ -801,7 +868,7 @@ class BaseDevice():
 
         xctestconfiguration_path = app_container + xctest_path  # "/tmp/WebDriverAgentRunner-" + str(session_identifier).upper() + ".xctestconfiguration"
         logger.debug("AppPath: %s", app_path)
-        logger.debug("AppContainer: %s", app_container)
+        logger.info("AppContainer: %s", app_container)
         app_env = {
             'CA_ASSERT_MAIN_THREAD_TRANSACTIONS': '0',
             'CA_DEBUG_TRANSACTIONS': '0',
@@ -817,6 +884,8 @@ class BaseDevice():
             # '__XPC_DYLD_LIBRARY_PATH': '/tmp/derivedDataPath/Build/Products/Release-iphoneos',
             'MJPEG_SERVER_PORT': '',
             'USE_PORT': '',
+            # maybe no needed
+            'LLVM_PROFILE_FILE': app_container + "/tmp/%p.profraw", # %p means pid
         } # yapf: disable
         app_env.update(env)
 
@@ -871,11 +940,17 @@ class BaseDevice():
             if m.flags == 0x02:
                 method, args = m.result
                 if method == 'outputReceived:fromProcess:atTime:':
-                    logger.debug("Output: %s", args[0].strip())
+                    # logger.info("Output: %s", args[0].strip())
+                    logger.debug("logProcess: %s", args[0].rstrip())
                     # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
                     if "ServerURLHere" in args[0]:
                         logger.info("WebDriverAgent start successfully")
 
+        def _log_message_callback(m: DTXMessage):
+            identifier, args = m.result
+            logger.debug("logConsole: %s", args)
+
+        conn.register_callback("_XCT_logDebugMessage:", _log_message_callback)
         conn.register_callback(Event.NOTIFICATION, _callback)
         if quit_event:
             conn.register_callback(Event.FINISHED, lambda _: quit_event.set())
@@ -900,14 +975,18 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, bundle_id="com.facebook.*.xctrunner", logger=None, env: dict={}):
+    def xctest(self, fuzzy_bundle_id="com.facebook.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
+
+        Args:
+            target_bundle_id (str): optional, launch WDA-UITests will not need it
+            env: launch env
         """
         if not logger:
             logger = setup_logger(level=logging.INFO)
         
-        bundle_id = self._fnmatch_find_bundle_id(bundle_id)
+        bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
 
         logger.info("DeviceIdentifier: %s", self.udid)
@@ -980,8 +1059,10 @@ class BaseDevice():
 
         # launch test app
         # index: 1540
-
-        pid = self._launch_wda(bundle_id, session_identifier, env=env, logger=logger)
+        xclogger = setup_logger(name='xctest')
+        pid = self._launch_app_runner(bundle_id, session_identifier,
+            target_app_bundle_id=target_bundle_id,
+            env=env, logger=xclogger)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored
@@ -1032,7 +1113,7 @@ class BaseDevice():
         # on windows threading.Event.wait can't handle ctrl-c
         while not quit_event.wait(.1):
             pass
-        logger.warning("xctrunner quited")
+        logger.info("xctrunner quited")
 
 
 Device = BaseDevice
