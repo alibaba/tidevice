@@ -21,7 +21,13 @@
 
 ## 安装
 
-Python 3.7+
+Python 3.6+
+
+```bash
+pip3 install -U "tidevice[openssl]"   # Recommend
+```
+
+如果上面的命令提示安装失败，就试试下面的命令。（不过这种方法安装，配对功能就没有了，因为没有办法进行签名）
 
 ```bash
 pip3 install -U tidevice
@@ -71,7 +77,7 @@ $ tidevice kill com.example.demo
 $ tidevice applist
 ```
 
-### 运行WebDriverAgent
+### Run XCTest
 > 请先确保手机上已经安装有[WebDriverAgent](https://github.com/appium/WebDriverAgent)应用
 
 ```bash
@@ -85,8 +91,26 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:952] Start execute test plan with IDE version: 29
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
-# 修改监听端口为8200
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
+# 修改监听端口为8200, 并显示调试日志
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
+```
+
+### Relay
+```
+# 转发请求到手机，类似于iproxy
+$ tidevice relay 8100 8100
+
+# 转发并把传输的内容用hexdump的方法print出来
+$ tidevice relay -x 8100 8100
+```
+
+### 运行WebDriverAgent
+wdaproxy这个命令会同时调用xctest和relay，另外当wda退出时，会自动重新启动xctest
+
+```bash
+# 运行 XCTest 并在PC上监听8200端口转发到手机8100服务
+$ tidevice wdaproxy -B com.facebook.wda.WebDriverAgent.Runner --port 8200
+...logs...
 ```
 
 启动后你就可以使用Appium 或者 [facebook-wda](https://github.com/openatx/facebook-wda) 来运行iOS自动化了
@@ -95,8 +119,53 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200
 
 ```python
 import wda
-c = wda.USBClient()
+c = wda.Client("http://localhost:8200")
 print(c.info)
+```
+
+### 运行XCTest UITest
+这个不是Unit Tests，而是UITests。具体可以看这里的解释说明 <https://fbidb.io/docs/test-execution>
+
+以这个项目为例: https://github.com/FeiHuang93/XCTest-Demo
+应用分为执行测试的应用 testXCTestUITests 和 被测应用 testXCTest
+
+执行方法
+
+```bash
+$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+# ... 省略一部分不重要的信息 ...
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
+[I 210301 15:37:07 _device:984] Test runner ready detected
+[I 210301 15:37:07 _device:976] Start execute test plan with IDE version: 29
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'All tests' started at 2021-03-01 15:37:08.009
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' started at 2021-03-01 15:37:08.010
+    XCTestOutputBarrierTest Suite 'testXCTestUITests' started at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' started.
+    XCTestOutputBarrier
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Start Test at 2021-03-01 15:37:08.010
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s Set Up
+[I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:08.010828+0800 testXCTestUITests-Runner[81644:13765443] testExample start
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s     Open philhuang.testXCTest
+[I 210301 15:37:07 _device:887] logProcess:     t =     0.00s         Launch philhuang.testXCTest
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Wait for accessibility to load
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.04s             Setting up automation session
+[I 210301 15:37:08 _device:887] logProcess:     t =     0.10s             Wait for philhuang.testXCTest to idle
+[I 210301 15:37:09 _device:887] logProcess:     t =     1.13s Tear Down
+[I 210301 15:37:09 _device:887] logProcess: Test Case '-[testXCTestUITests testExample]' passed (1.337 seconds).
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests' passed at 2021-03-01 15:37:09.349.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.339) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'testXCTestUITests.xctest' passed at 2021-03-01 15:37:09.350.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.340) seconds
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: Test Suite 'All tests' passed at 2021-03-01 15:37:09.352.
+    	 Executed 1 test, with 0 failures (0 unexpected) in 1.337 (1.343) seconds
+    XCTestOutputBarrier
+[I 210301 15:37:09 _device:887] logProcess: XCTestOutputBarrier
+[I 210301 15:37:09 _device:1059] xctrunner quited
 ```
 
 ### 挂载开发者镜像
@@ -112,14 +181,59 @@ $ tidevice developer
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
 ```
 
+# 查看设备信息
+```bash
+$ tidevice info
+
+# 查看设备电源信息
+$ tidevice info --domain com.apple.mobile.battery --json
+{
+    "BatteryCurrentCapacity": 53,
+    "BatteryIsCharging": true,
+    "ExternalChargeCapable": true,
+    "ExternalConnected": true,
+    "FullyCharged": false,
+    "GasGaugeCapability": true,
+    "HasBattery": true
+}
+```
+
+Known domains are:
+
+```text
+com.apple.disk_usage
+com.apple.disk_usage.factory
+com.apple.mobile.battery
+com.apple.iqagent
+com.apple.purplebuddy
+com.apple.PurpleBuddy
+com.apple.mobile.chaperone
+com.apple.mobile.third_party_termination
+com.apple.mobile.lockdownd
+com.apple.mobile.lockdown_cache
+com.apple.xcode.developerdomain
+com.apple.international
+com.apple.mobile.data_sync
+com.apple.mobile.tethered_sync
+com.apple.mobile.mobile_application_usage
+com.apple.mobile.backup
+com.apple.mobile.nikita
+com.apple.mobile.restriction
+com.apple.mobile.user_preferences
+com.apple.mobile.sync_data_class
+com.apple.mobile.software_behavior
+com.apple.mobile.iTunes.SQLMusicLibraryPostProcessCommands
+com.apple.mobile.iTunes.accessories
+com.apple.mobile.internal
+com.apple.mobile.wireless_lockdown
+com.apple.fairplay
+com.apple.iTunes
+com.apple.mobile.iTunes.store
+com.apple.mobile.iTunes
+```
+
 ### 其他常用
 ```bash
-# 转发TCP请求到手机上运行的服务，类似于iproxy
-$ tidevice relay 8100 8100
-
-# 转发并同时，显示tcp传输的内容
-$ tidevice relay -x 8100 8100
-
 # 重启
 $ tidevice reboot
 
@@ -128,6 +242,9 @@ $ tidevice screenshot screenshot.jpg
 
 # 性能采集 (TODO)
 # $ tidevice perf -o fps,mem,cpu -B com.example.demo
+
+# 输出日志 same as idevicesyslog
+$ tidevice syslog
 ```
 
 ## DEVELOP
