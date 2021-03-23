@@ -191,7 +191,7 @@ class BaseDevice():
             from ._ssl import make_certs_and_key
         except ImportError:
             print("DevicePair require pyOpenSSL and pyans1, install by the following command")
-            print("\tpip3 install pyOpenSSL pyans1", flush=True)
+            print("\tpip3 install pyOpenSSL pyasn1", flush=True)
             raise RuntimeError("Missing lib")
 
         cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
