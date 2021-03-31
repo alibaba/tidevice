@@ -60,14 +60,13 @@ class SocketBuffer:
 
 
 @contextlib.contextmanager
-def make_screenrecord(c: wda.Client, output_video_path: str = "output.mp4"):
+def make_screenrecord(c: wda.Client, t: tidevice.Device, output_video_path: str):
     _old_fps = c.appium_settings()['mjpegServerFramerate']
     _fps = 10
     c.appium_settings({"mjpegServerFramerate": _fps})
 
     # Read image from WDA mjpeg server
-    d = tidevice.Device()
-    pconn = d.create_inner_connection(9100)
+    pconn = t.create_inner_connection(9100) # default WDA mjpeg server port
     sock = pconn.get_socket()
     buf = SocketBuffer(sock)
     buf.write(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
@@ -106,8 +105,10 @@ def make_screenrecord(c: wda.Client, output_video_path: str = "output.mp4"):
 
 
 def test_main(c: wda.Client):
-    with make_screenrecord(c, "output.mp4"):
+    t = tidevice.Device()
+    with make_screenrecord(c, t, "output.mp4"):
         app = c.session("com.apple.Preferences")
         app(label="蓝牙").click()
+        c.sleep(1)
     
     
