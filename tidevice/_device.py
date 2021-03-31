@@ -191,7 +191,7 @@ class BaseDevice():
             from ._ssl import make_certs_and_key
         except ImportError:
             print("DevicePair require pyOpenSSL and pyans1, install by the following command")
-            print("\tpip3 install pyOpenSSL pyans1", flush=True)
+            print("\tpip3 install pyOpenSSL pyasn1", flush=True)
             raise RuntimeError("Missing lib")
 
         cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
@@ -597,7 +597,7 @@ class BaseDevice():
                     "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
                     "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
                     "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
-                    "14.5": "14.4(FromXcode_12.5_beta_xip).zip",
+                    "14.5": "14.5(FromXcode_12.5_beta_3_xip).zip",
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
                 origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"

@@ -105,6 +105,11 @@ $ tidevice relay -x 8100 8100
 ```
 
 ### 运行WebDriverAgent
+目前已知的几个问题
+
+- 不支持运行企业证书签名的WDA
+- 数据线可能导致wda连接中断。作者用的数据线(推荐): <https://item.jd.com/44473991638.html>
+
 wdaproxy这个命令会同时调用xctest和relay，另外当wda退出时，会自动重新启动xctest
 
 ```bash
