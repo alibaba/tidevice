@@ -6,6 +6,7 @@ import platform
 import plistlib
 import pprint
 import sys
+import typing
 import uuid
 from typing import Optional, Union
 
@@ -50,6 +51,8 @@ class Usbmux:
 
     def device_list(self):
         """
+        Return device and filter only USB type device
+
         Return example:
         {'DeviceList': [{'DeviceID': 37,
                 'MessageType': 'Attached',
@@ -95,7 +98,7 @@ class Usbmux:
         hostid = uuid.uuid3(uuid.NAMESPACE_DNS, hostname)
         return str(hostid).upper()
 
-    def watch_device(self):
+    def watch_device(self) -> typing.Iterator[dict]:
         """
         Return iterator of data as follows
         - {'DeviceID': 59, 'MessageType': 'Detached'}
