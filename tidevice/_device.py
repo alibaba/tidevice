@@ -717,7 +717,7 @@ class BaseDevice():
         with tempfile.TemporaryDirectory() as tmpdir:
             if is_url:
                 url = file_or_url
-                filepath = os.path.join(tmpdir, url.split("/")[-1])
+                filepath = os.path.join(tmpdir, "_tmp.ipa")
                 logger.info("Download to tmp path: %s", filepath)
                 with requests.get(url, stream=True) as r:
                     filesize = int(r.headers.get("content-length"))
