@@ -10,6 +10,7 @@ import typing
 import zipfile
 from typing import Union
 from cached_property import cached_property
+from pprint import pprint
 
 from . import bplist
 from . import plistlib2
@@ -69,6 +70,8 @@ class IPAReader(zipfile.ZipFile):
         data = self.get_infoplist()
         print("BundleID:", data['CFBundleIdentifier'])
         print("ShortVersion:", data['CFBundleShortVersionString'])
+        #m = self.get_mobileprovision()
+        #pprint(m['ProvisionedDevices'])
 
 
 def parse_bundle_id(fpath: str) -> str:

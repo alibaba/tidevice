@@ -258,6 +258,9 @@ $ tidevice syslog
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
 
+## Alternatives
+- Go implemented: https://github.com/electricbubble/gidevice
+
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>
 - <https://github.com/facebook/idb>
