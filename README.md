@@ -105,6 +105,11 @@ $ tidevice relay -x 8100 8100
 ```
 
 ### 运行WebDriverAgent
+目前已知的几个问题
+
+- 不支持运行企业证书签名的WDA
+- 数据线可能导致wda连接中断。作者用的数据线(推荐): <https://item.jd.com/44473991638.html>
+
 wdaproxy这个命令会同时调用xctest和relay，另外当wda退出时，会自动重新启动xctest
 
 ```bash
@@ -122,6 +127,9 @@ import wda
 c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
+
+需要在Windows上运行Appium+iOS自动化可以参考下面的帖子 <https://testerhome.com/topics/29230>
+Ref issue [#46](https://github.com/alibaba/taobao-iphone-device/issues/46)
 
 ### 运行XCTest UITest
 这个不是Unit Tests，而是UITests。具体可以看这里的解释说明 <https://fbidb.io/docs/test-execution>
@@ -249,6 +257,9 @@ $ tidevice syslog
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
+
+## Alternatives
+- Go implemented: https://github.com/electricbubble/gidevice
 
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>

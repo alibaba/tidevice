@@ -314,6 +314,9 @@ class InstrumentsService(str, enum.Enum):
 
 
 class UsbmuxReplyCode(int, enum.Enum):
+    """
+    Ref: https://github.com/libimobiledevice/usbmuxd/blob/master/src/usbmuxd-proto.h
+    """
     OK = 0
     BadCommand = 1
     BadDevice = 2

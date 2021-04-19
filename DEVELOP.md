@@ -10,6 +10,15 @@ git clone --depth 5 https://github.com/alibaba/tidevice
 ## Certificate
 [各种安全证书间的关系及相关操作](https://www.jianshu.com/p/96df7de54375)
 
+## Inspect usbmuxd data
+Not finished yet.
+
+```
+cd scripts
+sudo ./run-usbmuxd-proxy.sh
+```
+
+The captured data will be stored in `usbmuxd-dumpdata`
 
 ## Pair
 1. Retrieve **Device Public Key** from device

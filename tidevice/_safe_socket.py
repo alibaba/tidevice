@@ -47,6 +47,9 @@ class SafeStreamSocket():
         self._sock = socket.socket(family, socket.SOCK_STREAM)
         self._sock.connect(addr)
 
+    def get_socket(self) -> socket.socket:
+        return self._sock
+
     def recv(self, bufsize: int = 4096) -> bytes:
         return self._sock.recv(bufsize)
 
