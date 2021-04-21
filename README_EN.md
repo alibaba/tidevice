@@ -70,6 +70,10 @@ $ tidevice kill com.example.demo
 
 # show installed app list
 $ tidevice applist
+
+# show running app list
+$ tidevice ps
+$ tidevice ps --json output as json
 ```
 
 ### Run XCTest

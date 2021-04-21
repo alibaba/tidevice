@@ -75,6 +75,10 @@ $ tidevice kill com.example.demo
 
 # 查看已安装应用
 $ tidevice applist
+
+# 查看运行中的应用
+$ tidevice ps
+$ tidevice ps --json output as json
 ```
 
 ### Run XCTest

@@ -417,6 +417,37 @@ def cmd_fsync(args: argparse.Namespace):
         raise NotImplementedError()
 
 
+def cmd_ps(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    app_infos = list(d.installation.iter_installed(app_type=None))
+    ps = list(d.instruments.app_process_list(app_infos))
+
+    lens = defaultdict(int)
+    json_data = []
+    keys = ['pid', 'name', 'bundle_id', 'display_name']
+    for p in ps:
+        if not args.all and not p['isApplication']:
+            continue
+        for key in keys:
+            lens[key] = max(lens[key], len(str(p[key])))
+        json_data.append({key: p[key] for key in keys})
+
+    if args.json:
+        _print_json(json_data)
+        return
+
+    # {:0} is not allowed, so max(1, xx) is necessary
+    fmt = ' '.join(['{:%d}' % max(1, lens[key]) for key in keys])
+    fmt = '{:>' + fmt[2:]  # set PID right align
+    if is_atty:
+        print(fmt.format(*[key.upper() for key in keys]))
+
+    for p in ps:
+        if not args.all and not p['isApplication']:
+            continue
+        print(fmt.format(*[p[key] for key in keys]))
+
+
 def cmd_test(args: argparse.Namespace):
 
     print("Just test")
@@ -520,6 +551,17 @@ _commands = [
          command="kill",
          flags=[dict(args=['name'], help='pid or bundle_id')],
          help="kill by pid or bundle_id"),
+    dict(action=cmd_ps,
+         command="ps",
+         flags=[
+             dict(args=['--json'],
+                  action='store_true',
+                  help='format output as json'),
+             dict(args=['-A', '--all'],
+                  action='store_true',
+                  help='show all process')
+         ],
+         help="show running processes"),
     dict(action=cmd_relay,
          command="relay",
          flags=[

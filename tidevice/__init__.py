@@ -6,3 +6,4 @@
 
 from ._device import BaseDevice as Device
 from ._usbmux import Usbmux
+from .exceptions import *
