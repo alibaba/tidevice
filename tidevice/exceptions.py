@@ -3,7 +3,7 @@
 #
 
 __all__ = [
-    'MuxError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
+    'MuxError', 'MuxReplyError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
     'IPAError'
 ]
 
