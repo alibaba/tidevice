@@ -17,6 +17,8 @@ from cached_property import cached_property
 
 from . import requests_usbmux
 from ._device import Device
+from ._proto import UsbmuxReplyCode
+from .exceptions import MuxReplyError
 
 
 class WDAService:
@@ -38,7 +40,6 @@ class WDAService:
         return logzero.setup_logger(formatter=formatter)
 
     def _is_alive(self) -> bool:
-        from ._usbmux import MuxReplyError, UsbmuxReplyCode
         try:
             with requests_usbmux.Session() as session:
                 resp = session.get(requests_usbmux.DEFAULT_SCHEME +
