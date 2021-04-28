@@ -918,7 +918,7 @@ class ServiceInstruments(DTXService):
         ch_network = 'com.apple.xcode.debug-gauge-data-providers.NetworkStatistics'
         return self.call_message(ch_network, 'stopSamplingForPIDs:', [{pid}])
 
-    def get_process_network_stats(self, pid: int) -> Iterator[dict]:
+    def get_process_network_stats(self, pid: int) -> Optional[Iterator[dict]]:
         """
         经测试数据始终不是很准，用safari测试，每次刷新图片的时候，rx.bytes总是不动
         """
@@ -939,7 +939,7 @@ class ServiceInstruments(DTXService):
             'net.tx.packets.delta'
         }, {pid}]
         ret = self.call_message(ch_network, 'sampleAttributes:forPIDs:', args)
-        return ret[pid] if pid in ret else ret
+        return ret.get(pid)
     
     def iter_network(self) -> Iterator[dict]:
         """
