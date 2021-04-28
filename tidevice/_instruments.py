@@ -520,8 +520,8 @@ class DTXService(PlistSocket):
     def _handle_dtx_message(self, m: DTXMessage) -> bool:
         # logger.warning("Callback: identifier: %s", m.result) # TODO
 
-        if m.channel_id == 0xFFFFFFFF and m.flags == 0x05:
-            return self._reply_null(m)
+        if m.header.expects_reply == 1:
+            self._reply_null(m)
 
         if m.flags == 0x02:
             identifier, args = m.result
