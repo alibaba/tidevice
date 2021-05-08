@@ -36,11 +36,19 @@ tree /Volumes/DeveloperDiskImage
 Build `WebDriverAgentRunnerUITests-Runner.app` with the following command. `.app` should located in `/tmp/derivedDataPath/Release-iphoneos`
 
 ```bash
-xcodebuild build-for-testing -workspace WebDriverAgent.xcworkspace/ -scheme WebDriverAgent -sdk iphoneos -configuration Release -derivedDataPath /tmp/derivedDataPath
+$ xcodebuild build-for-testing -scheme WebDriverAgentRunner -sdk iphoneos -configuration Release -derivedDataPath /tmp/derivedDataPath
+$ cd /tmp/derivedDataPath
+$ cd Build/Products/Release-iphoneos # path might be different
+
+# Created folder `Payload` and put `.app` into it
+# then compressed to zip, change extention name to `.ipa`. That's all.
+$ mkdir Payload && mv *.app Payload
+$ zip -r WDA.ipa Payload
+
+# test if ipa is fine
+$ tidevice parse WDA.ipa
+$ tidevice install WDA.ipa # install to device
 ```
-
-Created folder `Payload` and put `.app` into it, then compressed to zip, change extention name to `.ipa`, and resign. That's all.
-
 
 ## Publish package to Pypi using Github Actions
 Ref: https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
