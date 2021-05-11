@@ -47,6 +47,7 @@ def get_binary_by_name(name: str) -> str:
         raise RuntimeError("Binary file {} not exist".format(name))
     return abspath
 
+
 def get_current_ip() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -99,7 +100,7 @@ class ProgressReader(io.IOBase):
     def _update(self, chunk_size: int):
         """ 5.1 MB/s 100%"""
         self._copied += chunk_size
-        bytes_per_second = self._copied / (time.time() - self._begin)
+        bytes_per_second = self._copied / max((time.time() - self._begin), 0.01)
         speed = self.format_size(bytes_per_second) + "/s"
         percent = "{:.1f}%".format(100 * self._copied / self._total_size)
         left_seconds = (self._total_size - self._copied) / max(
