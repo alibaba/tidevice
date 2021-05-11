@@ -448,8 +448,16 @@ def cmd_ps(args: argparse.Namespace):
         print(fmt.format(*[p[key] for key in keys]))
 
 
-def cmd_test(args: argparse.Namespace):
+def cmd_perf(args: argparse.Namespace):
+    from ._perf import Performance
+    d = _udid2device(args.udid)
+    perf = Performance(d)
+    perf.start(args.bundle_id)
+    time.sleep(10)
+    perf.stop_and_upload()
 
+
+def cmd_test(args: argparse.Namespace):
     print("Just test")
     # files = os.listdir(path)
 
@@ -620,6 +628,10 @@ _commands = [
          command="developer",
          help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),
+    dict(action=cmd_perf,
+         command="perf",
+         flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),],
+         help="performance of app"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 
