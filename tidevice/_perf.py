@@ -294,7 +294,7 @@ class Performance():
                                    callback),
                              daemon=True).start()
 
-    def stop_and_upload(self): # -> PerfReport:
+    def stop(self): # -> PerfReport:
         self._stop_event.set()
         print("Stopped")
         # memory and fps will take at least 1 second to catch _stop_event

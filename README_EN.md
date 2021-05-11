@@ -226,6 +226,38 @@ com.apple.mobile.iTunes.store
 com.apple.mobile.iTunes
 ```
 
+### Performance
+How to use in command line
+
+```bash
+$ tidevice perf -B com.example.demo
+fps {'fps': 0, 'value': 0, 'timestamp': 1620725299495}
+network {'timestamp': 1620725300511, 'downFlow': 55685.94921875, 'upFlow': 2300.96484375}
+screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x500 at 0x1037CF760>, 'timestamp': 1620725301374}
+fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
+cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
+memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+```
+
+Example with python
+
+```python
+import time
+import tidevice
+
+t = tidevice.Device()
+perf = tidevice.Performance(t)
+
+
+def callback(_type: tidevice.DataType, value: dict):
+    print("R:", _type.value, value)
+
+
+perf.start("com.apple.Preferences", callback=callback)
+time.sleep(10)
+perf.stop()
+```
+
 ### Other
 ```bash
 # reboot device
@@ -233,12 +265,11 @@ $ tidevice reboot
 
 $ tidevice screenshot screenshot.jpg
 
-# TODO(ssx): collect performance
-# $ tidevice perf -o fps,mem,cpu -B com.example.demo
-
 # same as idevicesyslog
 $ tidevice syslog
 ```
+
+
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
