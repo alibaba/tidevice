@@ -274,11 +274,11 @@ class Performance():
         self._result = defaultdict(list)
 
         # the callback function accepts all the data
-        self._callback = lambda _type, data: print(_type, data)
+        self._callback = None
 
     def start(self, bundle_id: str, callback: CallbackType = None):
         if not callback:
-            callback = lambda _type, data: print(_type.value, data)
+            callback = lambda _type, data: print(_type.value, data) if _type != DataType.SCREENSHOT else None
         self._rp = RunningProcess(self._d, bundle_id)
         self._thread_start(callback)
 

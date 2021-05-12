@@ -449,12 +449,18 @@ def cmd_ps(args: argparse.Namespace):
 
 
 def cmd_perf(args: argparse.Namespace):
+    assert args.bundle_id
+    #print("BundleID:", args.bundle_id)
     from ._perf import Performance
     d = _udid2device(args.udid)
     perf = Performance(d)
-    perf.start(args.bundle_id)
-    time.sleep(10)
-    perf.stop_and_upload()
+    try:
+        perf.start(args.bundle_id)
+        #print("Ctrl-C to finish")
+        import signal
+        signal.pause()
+    finally:
+        perf.stop()
 
 
 def cmd_test(args: argparse.Namespace):
