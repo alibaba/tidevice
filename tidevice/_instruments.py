@@ -778,9 +778,9 @@ class ServiceInstruments(DTXService):
         """
         channel = self.make_channel(
             "com.apple.instruments.server.services.graphics.opengl")
-        print("Channel:", channel)
+        # print("Channel:", channel)
 
-        print("Start sampling")
+        # print("Start sampling")
         aux = AUXMessageBuffer()
         aux.append_obj(0)
         payload = DTXPayload.build("startSamplingAtTimeInterval:", [0])

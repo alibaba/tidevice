@@ -44,7 +44,7 @@ SYSMON_PROC_ATTRS = [
     "cpuUsage",
     "ctxSwitch",  # the number of context switches by process each second
     "intWakeups",  # the number of threads wakeups by process each second
-    "physFootprint",  # real memory
+    "physFootprint",  # real memory (物理内存)
     "memResidentSize",  # rss
     "memAnon",  # anonymous memory
     "pid"

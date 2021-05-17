@@ -252,12 +252,43 @@ $ tidevice reboot
 # 截图
 $ tidevice screenshot screenshot.jpg
 
-# 性能采集 (TODO)
-# $ tidevice perf -o fps,mem,cpu -B com.example.demo
-
 # 输出日志 same as idevicesyslog
 $ tidevice syslog
 ```
+
+### 性能采集
+使用命令行可以直接看到结果，不过最好还是用接口获取
+
+```bash
+# 性能采集
+$ tidevice perf -B com.example.demo
+fps {'fps': 0, 'value': 0, 'timestamp': 1620725299495}
+network {'timestamp': 1620725300511, 'downFlow': 55685.94921875, 'upFlow': 2300.96484375}
+screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x500 at 0x1037CF760>, 'timestamp': 1620725301374}
+fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
+cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
+memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+```
+
+How to get app performance in python
+
+```python
+import time
+import tidevice
+
+t = tidevice.Device()
+perf = tidevice.Performance(t)
+
+
+def callback(_type: tidevice.DataType, value: dict):
+    print("R:", _type.value, value)
+
+
+perf.start("com.apple.Preferences", callback=callback)
+time.sleep(10)
+perf.stop()
+```
+
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
