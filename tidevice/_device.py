@@ -613,8 +613,14 @@ class BaseDevice():
             with tempfile.TemporaryDirectory() as tmpdir:
                 zf = zipfile.ZipFile(image_zip_path)
                 zf.extractall(tmpdir)
-                yield os.path.join(tmpdir, os.listdir(tmpdir)[0])
-
+                rootfiles = os.listdir(tmpdir)
+                if len(rootfiles) == 0: # empty zip
+                    raise RuntimeError("deviceSupport zip file is empty")
+                elif len(rootfiles) == 1: # contain a directory
+                    yield os.path.join(tmpdir, rootfiles[0])
+                else:
+                    yield tmpdir
+                
     def _test_if_developer_mounted(self) -> bool:
         try:
             with self.create_session():
