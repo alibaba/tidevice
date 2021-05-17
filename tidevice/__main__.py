@@ -458,8 +458,8 @@ def cmd_perf(args: argparse.Namespace):
     try:
         perf.start(args.bundle_id)
         #print("Ctrl-C to finish")
-        import signal
-        signal.pause()
+        while True:
+            time.sleep(.1)
     finally:
         perf.stop()
 
