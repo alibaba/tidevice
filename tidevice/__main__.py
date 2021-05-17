@@ -153,6 +153,7 @@ def cmd_shutdown(args: argparse.Namespace):
 
 def cmd_parse(args: argparse.Namespace):
     uri = args.uri
+    _all = args.all
 
     fp = None
     if re.match(r"^https?://", uri):
@@ -172,7 +173,7 @@ def cmd_parse(args: argparse.Namespace):
 
     try:
         ir = IPAReader(fp)
-        ir.dump_info()
+        ir.dump_info(all=_all)
     finally:
         fp.close()
 
@@ -531,7 +532,8 @@ _commands = [
     dict(action=cmd_shutdown, command="shutdown", help="shutdown device"),
     dict(action=cmd_parse,
          command="parse",
-         flags=[dict(args=['uri'], help="local path or url")],
+         flags=[dict(args=['--all'], action='store_true', help='show all info'),
+                dict(args=['uri'], help="local path or url")],
          help="parse ipa bundle id"),
     dict(action=cmd_watch, command="watch", help="watch device"),
     dict(action=cmd_wait_for_device,

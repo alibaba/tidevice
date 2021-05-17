@@ -66,12 +66,13 @@ class IPAReader(zipfile.ZipFile):
         """ return CFBundleIdentifier """
         return self.get_infoplist()['CFBundleIdentifier']
 
-    def dump_info(self):
+    def dump_info(self, all: bool = False):
         data = self.get_infoplist()
         print("BundleID:", data['CFBundleIdentifier'])
         print("ShortVersion:", data['CFBundleShortVersionString'])
-        #m = self.get_mobileprovision()
-        #pprint(m['ProvisionedDevices'])
+        if all:
+            m = self.get_mobileprovision()
+            pprint(m['ProvisionedDevices'])
 
 
 def parse_bundle_id(fpath: str) -> str:
