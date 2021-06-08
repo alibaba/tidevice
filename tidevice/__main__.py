@@ -221,7 +221,7 @@ def cmd_xctest(args: argparse.Namespace):
 
     d = _udid2device(args.udid)
     env = {}
-    for kv in args.env or {}:
+    for kv in args.env or []:
         key, val = kv.split(":", 1)
         env[key] = val
     if env:
@@ -336,7 +336,7 @@ def cmd_wdaproxy(args: argparse.Namespace):
     d = _udid2device(args.udid)
     
     env = {}
-    for kv in args.env or {}:
+    for kv in args.env or []:
         key, val = kv.split(":", 1)
         env[key] = val
     if env:
