@@ -26,14 +26,15 @@ import colored
 import requests
 from logzero import setup_logger
 
-from ._wdaproxy import WDAService
 from ._device import Device
+from ._imagemounter import cache_developer_image
 from ._ipautil import IPAReader
-from ._proto import MODELS, PROGRAM_NAME, LOG
+from ._proto import LOG, MODELS, PROGRAM_NAME
 from ._relay import relay
 from ._usbmux import Usbmux
 from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._version import __version__
+from ._wdaproxy import WDAService
 from .exceptions import MuxError, MuxServiceError, ServiceError
 
 um = None  # Usbmux
@@ -310,8 +311,18 @@ def cmd_battery(args: argparse.Namespace):
 
 
 def cmd_developer(args: argparse.Namespace):
-    d = _udid2device(args.udid)
-    d.mount_developer_image()
+    if args.download_all:
+        for major in range(7, 15):
+            for minor in range(0, 10):
+                version = f"{major}.{minor}"
+                try:
+                    cache_developer_image(version)
+                except requests.HTTPError:
+                    break
+        #     print("finish cache developer image {}".format(version))
+    else:
+        d = _udid2device(args.udid)
+        d.mount_developer_image()
     return
 
 
@@ -645,6 +656,7 @@ _commands = [
     dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),
     dict(action=cmd_developer,
          command="developer",
+         flags=[dict(args=['--download-all'], action="store_true", help="download all developer to local")],
          help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),
     dict(action=cmd_perf,
