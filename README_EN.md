@@ -173,6 +173,9 @@ $ tidevice developer
 [I 210127 11:37:52 _imagemounter:81] Pushing DeveloperDiskImage.dmg
 [I 210127 11:37:52 _imagemounter:94] Push complete
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
+
+# Download all developer image to local
+$ tidevice developer --download-all
 ```
 
 ### Check device info

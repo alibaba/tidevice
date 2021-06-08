@@ -30,7 +30,7 @@ from logzero import setup_logger
 from PIL import Image
 
 from . import bplist
-from ._imagemounter import ImageMounter
+from ._imagemounter import ImageMounter, cache_developer_image
 from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
                            ServiceInstruments)
@@ -41,7 +41,6 @@ from ._sync import Sync
 from ._usbmux import Usbmux
 from ._utils import ProgressReader, get_app_dir
 from .exceptions import *
-
 
 logger = logging.getLogger(LOG.main)
 
@@ -546,23 +545,6 @@ class BaseDevice():
         conn = self._unsafe_start_service(ImageMounter.SERVICE_NAME)
         return ImageMounter(conn)
 
-    def _urlretrieve(self, url, local_filename):
-        """ download url to local """
-        logger.info("Download %s -> %s", url, local_filename)
-
-        try:
-            tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
-            with requests.get(url, stream=True) as r:
-                r.raise_for_status()
-                with open(tmp_local_filename, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f, length=16<<20)
-                    f.flush()
-                os.rename(tmp_local_filename, local_filename)
-                logger.info("%r download successfully", local_filename)
-        finally:
-            if os.path.isfile(tmp_local_filename):
-                os.remove(tmp_local_filename)
-        
     @contextlib.contextmanager
     def _request_developer_image_dir(self):
         # use local path first
@@ -580,46 +562,24 @@ class BaseDevice():
             # yield image_path, signature_path
             yield mac_developer_dir
         else:
-            # $HOME/.tidevice/device-support/12.2.zip
-            local_device_support = get_app_dir("device-support")
-            image_zip_path = os.path.join(local_device_support, version+".zip")
-            if not os.path.isfile(image_zip_path):
-                # https://github.com/iGhibli/iOS-DeviceSupport
-                # https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/10.0.zip
-                _alias = {
-                    "12.2": "12.2 (16E5212e).zip",
-                    "12.4": "12.4 (FromXcode_11_Beta_7_xip).zip",
-                    "12.5": "12.4 (FromXcode_11_Beta_7_xip).zip", # 12.5 can work on 12.4
-                    "13.6": "13.6(FromXcode_12_beta_4_xip).zip",
-                    "13.7": "13.7 (17H35).zip",
-                    "14.0": "14.0(FromXcode_12_beta_6_xip).zip",
-                    "14.1": "14.1(FromXcode12.1(12A7403)).zip",
-                    "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
-                    "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
-                    "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
-                    "14.5": "14.5(FromXcode_12.5_beta_3_xip).zip",
-                }
-                zip_name = _alias.get(version, f"{version}.zip")
-                origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
-                mirror_url = f"https://tool.appetizer.io/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
-                # logger.info("Download %s -> %s", download_url, image_zip_path)
-                try:
-                    self._urlretrieve(mirror_url, image_zip_path)
-                except requests.HTTPError:
-                    logger.debug("mirror download failed, change to original url")
-                    # this might be slower
-                    self._urlretrieve(origin_url, image_zip_path)
-                
+            image_zip_path = cache_developer_image(version)
             with tempfile.TemporaryDirectory() as tmpdir:
                 zf = zipfile.ZipFile(image_zip_path)
                 zf.extractall(tmpdir)
                 rootfiles = os.listdir(tmpdir)
+                rootdirs = []
+                for dirname in rootfiles:
+                    if not dirname.startswith("_") and os.path.isdir(dirname):
+                        rootdirs.append(dirname)
+                
                 if len(rootfiles) == 0: # empty zip
                     raise RuntimeError("deviceSupport zip file is empty")
-                elif len(rootfiles) == 1: # contain a directory
-                    yield os.path.join(tmpdir, rootfiles[0])
-                else:
+                elif os.path.isfile(os.path.join(tmpdir, "DeveloperDiskImage.dmg")):
                     yield tmpdir
+                elif len(rootdirs) == 1: # contain a directory
+                    yield os.path.join(tmpdir, rootdirs[0])
+                else:
+                    raise RuntimeError("deviceSupport zip not detected DeveloperDiskImage")
                 
     def _test_if_developer_mounted(self) -> bool:
         try:
@@ -995,6 +955,9 @@ class BaseDevice():
         bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
 
+        product_version = self.get_value("ProductVersion")
+        logger.info("ProductVersion: %s", product_version)
+
         logger.info("DeviceIdentifier: %s", self.udid)
 
         XCODE_VERSION = 29
@@ -1087,11 +1050,8 @@ class BaseDevice():
         # result = x1.call_message(chan, identifier, aux)
         # logger.debug("result: %s", result)
 
-        # index: 1558
-        product_version = self.get_value("ProductVersion")
-        logger.info("ProductVersion: %s", product_version)
-        # return int(version.split(".")[0]) >= 12
-
+        # after app launched, operation bellow must be send in 0.1s
+        # or wda will launch failed
         if self.major_version() >= 12:
             identifier = '_IDE_authorizeTestSessionWithProcessID:'
             aux = AUXMessageBuffer()
