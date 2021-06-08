@@ -221,7 +221,7 @@ def cmd_xctest(args: argparse.Namespace):
 
     d = _udid2device(args.udid)
     env = {}
-    for kv in args.env or {}:
+    for kv in args.env or []:
         key, val = kv.split(":", 1)
         env[key] = val
     if env:
@@ -334,8 +334,16 @@ def cmd_relay(args: argparse.Namespace):
 def cmd_wdaproxy(args: argparse.Namespace):
     """ start xctest and relay """
     d = _udid2device(args.udid)
+    
+    env = {}
+    for kv in args.env or []:
+        key, val = kv.split(":", 1)
+        env[key] = val
+    if env:
+        logger.info("Launch env: %s", env)
+    
+    serv = WDAService(d, args.bundle_id, env)
 
-    serv = WDAService(d, args.bundle_id)
     p = None
     if args.port:
         cmds = [
@@ -626,7 +634,10 @@ _commands = [
              dict(args=['-p', '--port'],
                   type=int,
                   default=8100,
-                  help='pc listen port, set to 0 to disable port forward')
+                  help='pc listen port, set to 0 to disable port forward'),
+             dict(args=['-e', '--env'],
+                  action='append',
+                  help="set env with format key:value, support multi -e"),
          ],
          help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),

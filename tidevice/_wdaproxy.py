@@ -24,10 +24,11 @@ from .exceptions import MuxReplyError
 class WDAService:
     _DEFAULT_TIMEOUT = 3.0
 
-    def __init__(self, d: Device, bundle_id: str = "com.facebook.*.xctrunner"):
+    def __init__(self, d: Device, bundle_id: str = "com.facebook.*.xctrunner", env: dict={}):
         self._d = d
         self._bundle_id = bundle_id
         self._service = ThreadService(self._keep_wda_running)
+        self._env = env
 
     @property
     def udid(self) -> str:
@@ -116,9 +117,20 @@ class WDAService:
         while not stop_event.is_set():
             self.logger.debug("launch WDA")
             tries += 1
+            
             cmds = [
-                sys.executable, '-m', 'tidevice', '-u', self.udid, 'xctest', '--bundle_id', self._bundle_id
+                sys.executable, '-m', 'tidevice',
+                '-u', self.udid,
+                'xctest',
+                '--bundle_id', self._bundle_id,
+                #'-e', 'MJPEG_SERVER_PORT:8103'
             ]
+            
+            for key in self._env:
+                cmds.append('-e')
+                val = self._env[key]
+                cmds.append( key + ':' + val )
+            
             try:
                 proc = subprocess.Popen(cmds)
                 if not self._wait_ready(proc, stop_event):
