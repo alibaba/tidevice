@@ -8,15 +8,17 @@ import typing
 import zipfile
 from typing import List
 
+import retry
 import requests
 
 from ._safe_socket import PlistSocket
 from ._utils import get_app_dir, logger
 from .exceptions import MuxError, MuxServiceError
 
-_REQUESTS_TIMEOUT = 120.0
+_REQUESTS_TIMEOUT = 30.0
 
 
+@retry.retry(exceptions=requests.ReadTimeout, tries=5, delay=.5)
 def _urlretrieve(url, local_filename):
     """ download url to local """
     logger.info("Download %s -> %s", url, local_filename)
