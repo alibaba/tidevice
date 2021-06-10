@@ -5,6 +5,7 @@ import os
 import shutil
 import time
 import typing
+import zipfile
 from typing import List
 
 import requests
@@ -13,7 +14,7 @@ from ._safe_socket import PlistSocket
 from ._utils import get_app_dir, logger
 from .exceptions import MuxError, MuxServiceError
 
-_REQUESTS_TIMEOUT = 10.0
+_REQUESTS_TIMEOUT = 120.0
 
 
 def _urlretrieve(url, local_filename):
@@ -22,7 +23,8 @@ def _urlretrieve(url, local_filename):
 
     try:
         tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
-        with requests.get(url, stream=True, timeout=_REQUESTS_TIMEOUT) as r:
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+        with requests.get(url, headers=headers, stream=True, timeout=_REQUESTS_TIMEOUT) as r:
             r.raise_for_status()
             with open(tmp_local_filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f, length=16<<20)
@@ -42,9 +44,13 @@ def get_developer_image_url_list(version: str) -> typing.List[str]:
         "12.5": "12.4"
     }
     zip_name = _alias.get(version, f"{version}.zip")
+
+    # the code.aliyun slowlly
+    # gitee requires login
+    # aliyun_url = f"https://code.aliyun.com/hanjinjun/iOSDeviceSupoort/raw/master/DeviceSupport/{zip_name}"
     origin_url = f"https://github.com/{github_repo}/raw/master/DeviceSupport/{zip_name}"
-    mirror_url = f"https://tool.appetizer.io/{github_repo}/raw/master/DeviceSupport/{zip_name}"
-    return (origin_url, mirror_url)
+    mirror_url = origin_url.replace("https://github.com", "https://tool.appetizer.io")
+    return (mirror_url, origin_url)
 
 def cache_developer_image(version: str) -> str:
     """
@@ -54,15 +60,18 @@ def cache_developer_image(version: str) -> str:
     # $HOME/.tidevice/device-support/12.2.zip
     local_device_support = get_app_dir("device-support")
     image_zip_path = os.path.join(local_device_support, version+".zip")
-    if not os.path.isfile(image_zip_path):
+    if not zipfile.is_zipfile(image_zip_path):
+    # if not os.path.isfile(image_zip_path):
         urls = get_developer_image_url_list(version)
 
         err = None
         for url in urls:
             try:
                 _urlretrieve(url, image_zip_path)
-                err = None
-                break
+                if zipfile.is_zipfile(image_zip_path):
+                    err = None
+                    break
+                err = Exception("image file not zip")
             except requests.HTTPError as e:
                 err = e
                 if e.response.status_code == 404:

@@ -559,7 +559,6 @@ class BaseDevice():
         image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
         signature_path = image_path + ".signature"
         if os.path.isfile(image_path) and os.path.isfile(signature_path):
-            # yield image_path, signature_path
             yield mac_developer_dir
         else:
             image_zip_path = cache_developer_image(version)
@@ -567,19 +566,24 @@ class BaseDevice():
                 zf = zipfile.ZipFile(image_zip_path)
                 zf.extractall(tmpdir)
                 rootfiles = os.listdir(tmpdir)
-                rootdirs = []
-                for dirname in rootfiles:
-                    if not dirname.startswith("_") and os.path.isdir(dirname):
-                        rootdirs.append(dirname)
                 
+                rootdirs = []
+                for fname in rootfiles:
+                    if fname.startswith("_") or fname.startswith("."):
+                        continue
+                    if os.path.isdir(os.path.join(tmpdir, fname)):
+                        rootdirs.append(fname)
+
                 if len(rootfiles) == 0: # empty zip
                     raise RuntimeError("deviceSupport zip file is empty")
                 elif os.path.isfile(os.path.join(tmpdir, "DeveloperDiskImage.dmg")):
                     yield tmpdir
-                elif len(rootdirs) == 1: # contain a directory
+                elif version in rootdirs: # contains directory: {version}
+                    yield os.path.join(tmpdir, version)
+                elif len(rootdirs) == 1: # only contain one directory
                     yield os.path.join(tmpdir, rootdirs[0])
                 else:
-                    raise RuntimeError("deviceSupport zip not detected DeveloperDiskImage")
+                    raise RuntimeError("deviceSupport for {} not detected DeveloperDiskImage".format(version))
                 
     def _test_if_developer_mounted(self) -> bool:
         try:
