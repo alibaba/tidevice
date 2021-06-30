@@ -343,6 +343,7 @@ def cmd_wdaproxy(args: argparse.Namespace):
         logger.info("Launch env: %s", env)
     
     serv = WDAService(d, args.bundle_id, env)
+    serv.set_check_interval(args.check_interval)
 
     p = None
     if args.port:
@@ -638,6 +639,8 @@ _commands = [
              dict(args=['-e', '--env'],
                   action='append',
                   help="set env with format key:value, support multi -e"),
+             dict(args=['--check-interval'], type=float, default=30.0,
+                  help="check if wda is alive every CHECK_INTERVAL seconds, stop check when set to 0"),
          ],
          help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),

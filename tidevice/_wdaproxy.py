@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import typing
+import traceback
 
 import logzero
 import requests
@@ -22,13 +23,16 @@ from .exceptions import MuxReplyError
 
 
 class WDAService:
-    _DEFAULT_TIMEOUT = 3.0
+    _DEFAULT_TIMEOUT = 30 # http request timeout
 
-    def __init__(self, d: Device, bundle_id: str = "com.facebook.*.xctrunner", env: dict={}):
+    def __init__(self, d: Device, bundle_id: str = "com.facebook.*.xctrunner", env: dict={}, check_interval: float = 60):
         self._d = d
         self._bundle_id = bundle_id
         self._service = ThreadService(self._keep_wda_running)
         self._env = env
+
+    def set_check_interval(self, interval: float):
+        self._service.set_arguments(interval)
 
     @property
     def udid(self) -> str:
@@ -87,15 +91,22 @@ class WDAService:
             if proc.poll() is not None:
                 break
 
+            # stop check when check_interval is set to 0
+            if check_interval < 0.00001:
+                time.sleep(.1)
+                continue
+
             if not self._is_alive():
                 # maybe stuck by other request
                 # check again after 10s
-                self.logger.debug("WDA is not response, check again after 10s")
-                if stop_event.wait(10):
+                self.logger.debug("WDA is not response in %d second, check again after 1s", self._DEFAULT_TIMEOUT)
+                if stop_event.wait(1):
                     break
                 if not self._is_alive():
                     self.logger.info("WDA confirmed not running")
                     break
+                else:
+                    self.logger.debug("WDA is back alive")
 
             end_check_time = time.time() + check_interval
             while time.time() < end_check_time:
@@ -106,10 +117,12 @@ class WDAService:
         self.logger.info("WDA keeper stopped")
         return elapsed()
 
-    def _keep_wda_running(self, stop_event: threading.Event):
+    def _keep_wda_running(self, stop_event: threading.Event, check_interval: float = 60.0):
         """
         Keep wda running, launch when quit
         """
+        if check_interval > .1:
+            self.logger.info("WDA check every %.1f seconds", check_interval)
         tries: int = 0
         crash_times: int = 0 # detect unrecoverable launch
 
@@ -139,7 +152,7 @@ class WDAService:
                     if crash_times >= 5:
                         break
                     continue
-                elapsed = self._wait_until_quit(proc, stop_event)
+                elapsed = self._wait_until_quit(proc, stop_event, check_interval=check_interval)
                 crash_times = 0
                 
                 self.logger.info("WDA stopped for the %dst time, running %.1f minutes", tries, elapsed / 60)
@@ -210,21 +223,25 @@ class ThreadService(BaseService):
         self._func = thread_func
         self._stop_event = threading.Event()
         self._args = []
+        self._kwargs = {}
 
-    def set_args(self, args: list):
+    def set_arguments(self, *args, **kwargs):
         self._args = args
+        self._kwargs = kwargs
 
     def _wrapped_func(self):
         try:
-            args = [self._stop_event] + self._args
-            return self._func(*args)
+            args = [self._stop_event] + list(self._args)
+            return self._func(*args, **self._kwargs)
+        except:
+            traceback.print_exc()
         finally:
             self.set_running(False)
 
     def _start(self):
         self._stop_event.clear()
 
-        th = threading.Thread(target=self._wrapped_func)
+        th = threading.Thread(target=self._wrapped_func, name="wda")
         th.daemon = True
         th.start()
 
