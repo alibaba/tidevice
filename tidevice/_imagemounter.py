@@ -43,8 +43,8 @@ def get_developer_image_url_list(version: str) -> typing.List[str]:
     # https://github.com/JinjunHan/iOSDeviceSupport
     github_repo = "JinjunHan/iOSDeviceSupport"
     _alias = {
-        "12.5": "12.4.zip"
-        "14.6": "14.5.zip"
+        "12.5": "12.4.zip",
+        "14.6": "14.5.zip",
     }
     zip_name = _alias.get(version, f"{version}.zip")
 
