@@ -291,6 +291,7 @@ class LockdownService(str, enum.Enum):
 
     # Ref: https://github.com/anonymous5l/iConsole/blob/master/wifiSync.go
     MobileWirelessLockdown = "com.apple.mobile.wireless_lockdown"
+    InstallationProxy = "com.apple.mobile.installation_proxy"
 
     MobileScreenshotr = "com.apple.mobile.screenshotr"  # 截图服务
     MobileHouseArrest = "com.apple.mobile.house_arrest"  # 访问文件内的沙箱
@@ -300,6 +301,8 @@ class LockdownService(str, enum.Enum):
     InstrumentsRemoteServerSecure = "com.apple.instruments.remoteserver.DVTSecureSocketProxy"  # for iOS 14.0
     TestmanagerdLockdown = "com.apple.testmanagerd.lockdown"
     TestmanagerdLockdownSecure = "com.apple.testmanagerd.lockdown.secure"  # for iOS 14.0
+
+    
 
 
 class InstrumentsService(str, enum.Enum):
