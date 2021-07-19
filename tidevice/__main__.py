@@ -5,24 +5,17 @@
 
 import argparse
 import base64
-import datetime
-import fnmatch
 import json
 import logging
 import os
 import re
-import shutil
-import socket
 import subprocess
 import sys
-import threading
 import time
-import traceback
 from collections import defaultdict
 from pprint import pformat, pprint
 from typing import Optional, Union
 
-import colored
 import requests
 from logzero import setup_logger
 
