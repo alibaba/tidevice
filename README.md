@@ -134,6 +134,13 @@ c = wda.Client("http://localhost:8200")
 print(c.info)
 ```
 
+*Appium* 需要下面几个配置需要设置一下
+```
+"usePrebuiltWDA": "false",
+"useXctestrunFile": "false",
+"skipLogCapture": "true"
+```
+
 需要在Windows上运行Appium+iOS自动化可以参考下面的帖子 <https://testerhome.com/topics/29230>
 Ref issue [#46](https://github.com/alibaba/taobao-iphone-device/issues/46)
 
