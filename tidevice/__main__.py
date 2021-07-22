@@ -474,7 +474,7 @@ def cmd_perf(args: argparse.Namespace):
     #print("BundleID:", args.bundle_id)
     from ._perf import Performance
     d = _udid2device(args.udid)
-    perf = Performance(d)
+    perf = Performance(d,perfs=args.perfs.split(','))
     try:
         perf.start(args.bundle_id)
         #print("Ctrl-C to finish")
@@ -664,7 +664,8 @@ _commands = [
     dict(action=cmd_pair, command='pair', help='pair device'),
     dict(action=cmd_perf,
          command="perf",
-         flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),],
+         flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),
+                dict(args=['-P', '--perfs'], help='cpu,memory,fps,network,screenshot. separate by ","', required=False),],
          help="performance of app"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
