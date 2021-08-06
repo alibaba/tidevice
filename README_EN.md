@@ -15,6 +15,7 @@ Command line tool to communicate with iOS device, support the following function
 - list installed app info
 - retrieve performance data
 - simulate run xctest, eg: WebDriverAgent
+- file operation
 - other
 
 Support platform: Mac, Linux, Windows
@@ -229,6 +230,38 @@ com.apple.mobile.iTunes.store
 com.apple.mobile.iTunes
 ```
 
+### File operation
+```bash
+# show photo dir
+$ tidevice fsync /DCIM/
+
+# inspect files in app iMovie
+$ tidevice fsync -B com.apple.iMovie ls /Documents/
+
+# 其他操作 rm cat pull push stat tree rmtree mkdir
+$ tidevice fsync -h
+
+# Supported inspect /Documents apps
+# com.apple.iMovie iMovie
+# com.apple.mobilegarageband 库乐队
+# com.apple.clips 可立拍
+# com.t3go.passenger T3出行
+# com.dji.golite DJI Fly
+# com.duokan.reader 多看阅读
+```
+
+
+### Other
+```bash
+# reboot device
+$ tidevice reboot
+
+$ tidevice screenshot screenshot.jpg
+
+# same as idevicesyslog
+$ tidevice syslog
+```
+
 ### Performance
 How to use in command line
 
@@ -260,18 +293,6 @@ perf.start("com.apple.Preferences", callback=callback)
 time.sleep(10)
 perf.stop()
 ```
-
-### Other
-```bash
-# reboot device
-$ tidevice reboot
-
-$ tidevice screenshot screenshot.jpg
-
-# same as idevicesyslog
-$ tidevice syslog
-```
-
 
 
 ## DEVELOP
