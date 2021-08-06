@@ -13,11 +13,12 @@ from collections import namedtuple
 from types import SimpleNamespace
 from typing import Iterator, List, Union
 
+from . import bplist
 from . import struct2 as ct
 from ._proto import *
-from ._utils import pathjoin
 from ._safe_socket import PlistSocket
-from .exceptions import MuxError
+from ._utils import pathjoin
+from .exceptions import MuxError, MuxServiceError
 
 # 00000000: 43 46 41 36 4C 50 41 41  84 00 00 00 00 00 00 00  magic(CFA6LPAA), length(0x84)
 # 00000010: 28 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  unknown(0x28), tag(0x0)
@@ -72,7 +73,10 @@ class Sync(PlistSocket):
         buf = self.recvall(4)
         if buf != AFC_MAGIC[:4]:
             (plist_size, ) = struct.unpack(">I", buf)
-            self.recvall(plist_size) # Discard plist xml-content
+            status_data = self.recvall(plist_size) # Discard plist xml-content
+            status_info = bplist.loads(status_data)
+            if "Error" in status_info:
+                raise MuxServiceError(status_info["Error"])
             buf = b""
         buf = buf + self.recvall(FHeader.size - len(buf))
         fheader = FHeader.parse(buf)
