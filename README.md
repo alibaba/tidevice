@@ -17,6 +17,7 @@ QQ交流群: _134535547_  (进群答案: ios)
 - 列出安装应用信息
 - 模拟Xcode运行XCTest，常用的如启动WebDriverAgent测试（此方法不依赖xcodebuild)
 - 获取指定应用性能(CPU,MEM,FPS)
+- 文件操作
 - 其他
 
 支持运行在Mac，Linux，Windows上
@@ -254,6 +255,27 @@ com.apple.fairplay
 com.apple.iTunes
 com.apple.mobile.iTunes.store
 com.apple.mobile.iTunes
+```
+
+### 文件操作
+```bash
+
+# 查看相册内容
+$ tidevice fsync /DCIM/
+
+# 查看T3出行Documents中的内容
+$ tidevice fsync -B com.t3go.passenger ls /Documents/
+
+# 其他操作 rm cat pull push stat tree rmtree mkdir
+$ tidevice fsync -h
+
+# 支持查看 /Documents 的App
+# com.apple.iMovie iMovie
+# com.apple.mobilegarageband 库乐队
+# com.apple.clips 可立拍
+# com.t3go.passenger T3出行
+# com.dji.golite DJI Fly
+# com.duokan.reader 多看阅读
 ```
 
 ### 其他常用

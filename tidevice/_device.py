@@ -523,10 +523,12 @@ class BaseDevice():
             return data['Value']
 
     def app_sync(self, bundle_id: str) -> Sync:
-        # 'com.facebook.WebDriverAgentRunner.xctrunner'
+        # Change command(VendContainer -> VendDocuments)
+        # According to https://github.com/GNOME/gvfs/commit/b8ad223b1e2fbe0aec24baeec224a76d91f4ca2f
+        # Ref: https://github.com/libimobiledevice/libimobiledevice/issues/193
         conn = self.start_service(LockdownService.MobileHouseArrest)
         conn.send_packet({
-            "Command": "VendContainer",
+            "Command": "VendDocuments",
             "Identifier": bundle_id,
         })
         return Sync(conn)
