@@ -166,30 +166,32 @@ def _iter_complex_cpu_memory(d: BaseDevice,
             if isinstance(pinfo.cpuUsage, float):  # maybe NSNull
                 total_cpu_usage += pinfo.cpuUsage
 
+        cpu_usage = 0.0
         attrs = pinfolist['Processes'].get(pid)
         if attrs is None:  # process is not running
-            continue
-        assert len(attrs) == len(SYSMON_PROC_ATTRS)
-        # print(ProcAttrs, attrs)
-        pinfo = ProcAttrs(*attrs)
+            # continue
+            # print('process not launched')
+            pass
+        else:
+            assert len(attrs) == len(SYSMON_PROC_ATTRS)
+            # print(ProcAttrs, attrs)
+            pinfo = ProcAttrs(*attrs)
+            cpu_usage = pinfo.cpuUsage
         # next_list_process_time = time.time() + next_timeout
         # cpu_usage, rss, mem_anon, pid = pinfo
-        cpu_usage = pinfo.cpuUsage
-        if not cpu_usage:
-            cpu_usage = 0.0
 
         # 很诡异的计算方法，不过也就这种方法计算出来的CPU看起来正常一点
         # 计算后的cpuUsage范围 [0, 100]
-        cpu_total_load /= cpu_count
-        cpu_usage *= cpu_total_load
-        if total_cpu_usage > 0:
-            cpu_usage /= total_cpu_usage
+        # cpu_total_load /= cpu_count
+        # cpu_usage *= cpu_total_load
+        # if total_cpu_usage > 0:
+        #     cpu_usage /= total_cpu_usage
 
         # print("cpuUsage: {}, total: {}".format(cpu_usage, total_cpu_usage))
         # print("memory: {} MB".format(pinfo.physFootprint / 1024 / 1024))
         yield dict(
             type="process",
-            pid=pinfo.pid,
+            pid=pid,
             phys_memory=pinfo.physFootprint,  # 物理内存
             phys_memory_string="{:.1f} MiB".format(pinfo.physFootprint / 1024 /
                                                    1024),
@@ -212,6 +214,8 @@ def iter_cpu_memory(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
             "timestamp": gen_stimestamp(),
             "pid": minfo['pid'],
             "value": minfo['cpu_usage'],  # max 100.0?, maybe not
+            "sys_value": minfo['sys_cpu_usage'],
+            "count": minfo['cpu_count']
         }
         yield DataType.MEMORY, {
             "pid": minfo['pid'],
@@ -243,7 +247,7 @@ def iter_network_flow(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
 
 
 def append_data(wg: WaitGroup, stop_event: threading.Event,
-                idata: Iterator[Any], callback: CallbackType):
+                idata: Iterator[Any], callback: CallbackType, filters: list):
     for _type, data in idata:
         assert isinstance(data, dict)
         assert isinstance(_type, DataType)
@@ -256,7 +260,8 @@ def append_data(wg: WaitGroup, stop_event: threading.Event,
             stimestamp = gen_stimestamp(data.pop('time'))
             data.update({"timestamp": stimestamp})
         # result[_type].append(data)
-        callback(_type, data)
+        if _type in filters:
+            callback(_type, data)
         # print(_type, data)
 
     stop_event.set()  # 当有一个中断，其他的全部中断，让错误暴露出来
@@ -265,33 +270,41 @@ def append_data(wg: WaitGroup, stop_event: threading.Event,
 class Performance():
     # PROMPT_TITLE = "tidevice performance"
 
-    def __init__(self, d: BaseDevice):
+    def __init__(self, d: BaseDevice, perfs: typing.List[DataType] = []):
         self._d = d
         self._bundle_id = None
         self._stop_event = threading.Event()
         self._wg = WaitGroup()
         self._started = False
         self._result = defaultdict(list)
+        self._perfs = perfs
 
         # the callback function accepts all the data
         self._callback = None
 
     def start(self, bundle_id: str, callback: CallbackType = None):
         if not callback:
-            callback = lambda _type, data: print(_type.value, data) if _type != DataType.SCREENSHOT else None
+            # 默认不输出屏幕的截图（暂时没想好怎么处理）
+            callback = lambda _type, data: print(_type.value, data) if _type != DataType.SCREENSHOT and _type in self._perfs else None
         self._rp = RunningProcess(self._d, bundle_id)
         self._thread_start(callback)
 
     def _thread_start(self, callback: CallbackType):
-        for it in (iter_cpu_memory(self._d, self._rp),
-                   iter_fps(self._d),
-                   set_interval(iter_screenshot(self._d), 1.0),
-                   iter_network_flow(self._d, self._rp)): # yapf: disable
+        iters = []
+        if DataType.CPU in self._perfs or DataType.MEMORY in self._perfs:
+            iters.append(iter_cpu_memory(self._d, self._rp))
+        if DataType.FPS in self._perfs:
+            iters.append(iter_fps(self._d))
+        if DataType.SCREENSHOT in self._perfs:
+            iters.append(set_interval(iter_screenshot(self._d), 1.0))
+        if DataType.NETWORK in self._perfs:
+            iters.append(iter_network_flow(self._d, self._rp))
+        for it in (iters): # yapf: disable
             self._wg.add(1)
             threading.Thread(name="perf",
                              target=append_data,
                              args=(self._wg, self._stop_event, it,
-                                   callback),
+                                   callback,self._perfs),
                              daemon=True).start()
 
     def stop(self): # -> PerfReport:

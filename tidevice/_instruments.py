@@ -794,7 +794,7 @@ class ServiceInstruments(DTXService):
             for m in iter(que.get, None):
                 if m.channel_id != 0xFFFFFFFF:
                     continue
-                self._reply_null(m)
+                # self._reply_null(m)
                 yield m.result
         finally:
             self.close()

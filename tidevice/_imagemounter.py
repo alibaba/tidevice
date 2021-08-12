@@ -64,7 +64,6 @@ def cache_developer_image(version: str) -> str:
     local_device_support = get_app_dir("device-support")
     image_zip_path = os.path.join(local_device_support, version+".zip")
     if not zipfile.is_zipfile(image_zip_path):
-    # if not os.path.isfile(image_zip_path):
         urls = get_developer_image_url_list(version)
 
         err = None

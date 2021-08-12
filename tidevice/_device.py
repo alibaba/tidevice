@@ -487,6 +487,7 @@ class BaseDevice():
 
     def iter_screenshot(self) -> Iterator[Image.Image]:
         """ take screenshot infinite """
+        
         with self.start_service(LockdownService.MobileScreenshotr) as conn:
             version_exchange = conn.recv_packet()
             # Expect recv: ['DLMessageVersionExchange', 300, 0]
@@ -510,6 +511,7 @@ class BaseDevice():
                 assert data[1]['MessageType'] == "ScreenShotReply"
 
                 png_data = data[1]['ScreenShotData']
+
                 yield pil_imread(png_data)
 
     @property
