@@ -270,7 +270,7 @@ def append_data(wg: WaitGroup, stop_event: threading.Event,
 class Performance():
     # PROMPT_TITLE = "tidevice performance"
 
-    def __init__(self, d: BaseDevice, perfs:list = []):
+    def __init__(self, d: BaseDevice, perfs: typing.List[DataType] = []):
         self._d = d
         self._bundle_id = None
         self._stop_event = threading.Event()
@@ -278,14 +278,13 @@ class Performance():
         self._started = False
         self._result = defaultdict(list)
         self._perfs = perfs
-        if not perfs or len(perfs) <= 0:
-            self._perfs = [DataType.FPS,DataType.CPU,DataType.MEMORY,DataType.SCREENSHOT,DataType.NETWORK]
 
         # the callback function accepts all the data
         self._callback = None
 
     def start(self, bundle_id: str, callback: CallbackType = None):
         if not callback:
+            # 默认不输出屏幕的截图（暂时没想好怎么处理）
             callback = lambda _type, data: print(_type.value, data) if _type != DataType.SCREENSHOT and _type in self._perfs else None
         self._rp = RunningProcess(self._d, bundle_id)
         self._thread_start(callback)

@@ -22,6 +22,7 @@ from logzero import setup_logger
 from ._device import Device
 from ._imagemounter import cache_developer_image
 from ._ipautil import IPAReader
+from ._perf import DataType
 from ._proto import LOG, MODELS, PROGRAM_NAME
 from ._relay import relay
 from ._usbmux import Usbmux
@@ -467,9 +468,19 @@ def cmd_perf(args: argparse.Namespace):
     #print("BundleID:", args.bundle_id)
     from ._perf import Performance
     d = _udid2device(args.udid)
-    perf = Performance(d,perfs=args.perfs.split(','))
+    perfs = list(DataType)
+    if args.perfs:
+        perfs = []
+        for _typename in args.perfs.split(","):
+            perfs.append(DataType(_typename))
+    # print(perfs)
+    perf = Performance(d, perfs=perfs)
+
+    def _cb(_type: DataType, data):
+        print(_type.value, data)
+
     try:
-        perf.start(args.bundle_id)
+        perf.start(args.bundle_id, callback=_cb)
         #print("Ctrl-C to finish")
         while True:
             time.sleep(.1)
@@ -658,7 +669,7 @@ _commands = [
     dict(action=cmd_perf,
          command="perf",
          flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),
-                dict(args=['-P', '--perfs'], help='cpu,memory,fps,network,screenshot. separate by ","', required=False),],
+                dict(args=['-o'], dest='perfs', help='cpu,memory,fps,network,screenshot. separate by ","', required=False),],
          help="performance of app"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
