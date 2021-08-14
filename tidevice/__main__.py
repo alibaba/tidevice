@@ -76,10 +76,13 @@ def cmd_list(args: argparse.Namespace):
     result = []
     for dinfo in um.device_list():
         udid = dinfo['SerialNumber']
-        _d = Device(udid, um)
-        name = _d.name
-        if not args.json:
-            print(udid, name)
+        try:
+            _d = Device(udid, um)
+            name = _d.name
+            if not args.json:
+                print(udid, name)
+        except MuxError:
+            name = ""
         result.append(dict(udid=udid, name=name))
     if args.json:
         _print_json(result)
