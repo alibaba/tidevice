@@ -70,10 +70,12 @@ class SafeStreamSocket():
         # logger.debug("Switch to ssl")
         assert os.path.isfile(pemfile)
         self._dup_sock = self._sock.dup()
-        ssock = ssl.wrap_socket(self._sock,
-                                keyfile=pemfile,
-                                certfile=pemfile,
-                                ssl_version=ssl.PROTOCOL_TLSv1)
+        
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.load_cert_chain(pemfile, keyfile=pemfile)
+        context.check_hostname = False
+        ssock = context.wrap_socket(self._sock, server_hostname="iphone.localhost")
+        
         self._sock = ssock
 
     def close(self):
