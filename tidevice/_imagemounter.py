@@ -123,6 +123,7 @@ class ImageMounter(PlistSocket):
         assert os.path.isfile(image_path), image_path
         assert os.path.isfile(image_signature_path), image_signature_path
         
+        logger.debug("image path: %s, %s", image_path, image_signature_path)
         with open(image_signature_path, 'rb') as f:
             signature_content = f.read()
         

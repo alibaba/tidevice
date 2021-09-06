@@ -352,7 +352,7 @@ def cmd_wdaproxy(args: argparse.Namespace):
 
     try:
         serv.start()
-        while serv._service.running:
+        while serv._service.running and p.poll() is None:
             time.sleep(.1)
     finally:
         p and p.terminate()
