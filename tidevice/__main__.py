@@ -15,6 +15,7 @@ import time
 from collections import defaultdict
 from pprint import pformat, pprint
 from typing import Optional, Union
+from datetime import datetime
 
 import requests
 from logzero import setup_logger
@@ -76,14 +77,15 @@ def cmd_list(args: argparse.Namespace):
     result = []
     for dinfo in um.device_list():
         udid = dinfo['SerialNumber']
+        conn_type = dinfo['ConnectionType']
         try:
             _d = Device(udid, um)
             name = _d.name
             if not args.json:
-                print(udid, name)
+                print(udid, name, conn_type)
         except MuxError:
             name = ""
-        result.append(dict(udid=udid, name=name))
+        result.append(dict(udid=udid, name=name, conn_type=conn_type))
     if args.json:
         _print_json(result)
 
@@ -117,6 +119,16 @@ def cmd_device_info(args: argparse.Namespace):
                      'UniqueDeviceID', 'WiFiAddress', 'BluetoothAddress',
                      'BasebandVersion'):
             print("{:17s} {}".format(attr + ":", value.get(attr)))
+
+
+def cmd_date(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    value = d.get_value() or {}
+    timestamp = value.get("TimeIntervalSince1970")
+    if args.format:
+        print(datetime.fromtimestamp(int(timestamp)))
+    else:
+        print(timestamp)
 
 
 def cmd_version(args: argparse.Namespace):
@@ -531,6 +543,14 @@ _commands = [
             dict(args=['--domain'], help='set domain of query to NAME.'),
         ],
         help="show device info"),
+    dict(action=cmd_date,
+         command="date",
+         flags=[
+             dict(args=['--format'],
+                  action='store_true',
+                  help="format timestamp")
+         ],
+         help="device current date"),
     dict(action=cmd_system_info,
          command="sysinfo",
          help="show device system info"),

@@ -74,7 +74,7 @@ class Usbmux:
         }
         data = self.send_recv(payload)
         _devices = [item['Properties'] for item in data['DeviceList']]
-        return [d for d in _devices if d['ConnectionType'] == 'USB']
+        return [d for d in _devices if d['ConnectionType'] in ['USB', 'Network']]
 
     def device_udid_list(self) -> list:
         return [d['SerialNumber'] for d in self.device_list()]
