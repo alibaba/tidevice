@@ -40,20 +40,20 @@ def _complete_udid(udid: Optional[str] = None) -> str:
     infos = um.device_list()
     if not udid:
         if len(infos) >= 2:
-            sys.exit("More then 2 devices detected")
+            sys.exit("More than 2 devices detected")
         if len(infos) == 0:
             sys.exit("No device detected")
-        return infos[0]['SerialNumber']
+        return infos[0].udid
 
     # Find udid exactly match
     for info in infos:
-        if info['SerialNumber'] == udid:
+        if info.udid == udid:
             return udid
 
     # Find udid starts-with
     _udids = [
-        info['SerialNumber'] for info in infos
-        if info['SerialNumber'].startswith(udid)
+        info.udid for info in infos
+        if info.udid.startswith(udid)
     ]
 
     if len(_udids) == 1:
@@ -76,8 +76,7 @@ def cmd_list(args: argparse.Namespace):
 
     result = []
     for dinfo in um.device_list():
-        udid = dinfo['SerialNumber']
-        conn_type = dinfo['ConnectionType']
+        udid, conn_type = dinfo.udid, dinfo.conn_type
         try:
             _d = Device(udid, um)
             name = _d.name

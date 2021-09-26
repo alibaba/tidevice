@@ -18,3 +18,4 @@ packaging
 tornado
 simple_tornado
 retry
+simplejson

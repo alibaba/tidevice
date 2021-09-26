@@ -38,6 +38,7 @@ from ._ipautil import IPAReader
 from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
+from ._types import DeviceInfo
 from ._usbmux import Usbmux
 from ._utils import ProgressReader, get_app_dir
 from .exceptions import *
@@ -82,7 +83,7 @@ class BaseDevice():
             self._usbmux = usbmux
 
         self._udid = udid
-        self._info = self.info
+        self._info: DeviceInfo = self.info
         self._lock = threading.Lock()
         self._pair_record = None
 
@@ -91,25 +92,18 @@ class BaseDevice():
         return self._usbmux
 
     @cached_property
-    def info(self) -> dict:
-        """
-        Example return:
-        {
-            "SerialNumber": "xxxx", # udid
-            "DeviceID": 12,
-        }
-        """
+    def info(self) -> DeviceInfo:
         devices = self._usbmux.device_list()
         if not self._udid:
             assert len(
                 devices
             ) == 1, "Device is not present or multi devices connected"
             _d = devices[0]
-            self._udid = _d['SerialNumber']
+            self._udid = _d.udid
             return _d
         else:
             for d in devices:
-                if d['SerialNumber'] == self._udid:
+                if d.udid == self._udid:
                     return d
         raise MuxError("Device: {} not ready".format(self._udid))
 
@@ -122,7 +116,7 @@ class BaseDevice():
     
     @property
     def devid(self) -> int:
-        return self._info['DeviceID']
+        return self._info.device_id
 
     @property
     def pair_record(self) -> dict:
@@ -279,7 +273,7 @@ class BaseDevice():
         #              hex(_port), _port)
         del (port)
 
-        device_id = self.info['DeviceID']
+        device_id = self.info.device_id
         conn = self._usbmux.create_connection()
         payload = {
             'DeviceID': device_id,  # Required
