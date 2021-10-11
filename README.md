@@ -309,10 +309,12 @@ How to get app performance in python
 ```python
 import time
 import tidevice
+from tidevice._perf import DataType
 
 t = tidevice.Device()
-perf = tidevice.Performance(t)
-
+perf = tidevice.Performance(t, [DataType.CPU, DataType.MEMORY, DataType.NETWORK, DataType.FPS, DataType.PAGE, DataType.SCREENSHOT])
+#  tidevice version <= 0.4.16:
+#  perf = tidevice.Performance(t)
 
 def callback(_type: tidevice.DataType, value: dict):
     print("R:", _type.value, value)
