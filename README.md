@@ -99,7 +99,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
 # 修改监听端口为8200, 并显示调试日志
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USE_PORT:8200 --debug
 ```
 
 ### Relay
