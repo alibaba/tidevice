@@ -312,7 +312,7 @@ import tidevice
 from tidevice._perf import DataType
 
 t = tidevice.Device()
-perf = tidevice.Performance(t, [DataType.CPU, DataType.MEMORY, DataType.NETWORK, DataType.FPS, DataType.PAGE, DataType.SCREENSHOT])
+perf = tidevice.Performance(t, [DataType.CPU, DataType.MEMORY, DataType.NETWORK, DataType.FPS, DataType.PAGE, DataType.SCREENSHOT, DataType.GPU])
 #  tidevice version <= 0.4.16:
 #  perf = tidevice.Performance(t)
 
