@@ -42,11 +42,7 @@ def get_developer_image_url_list(version: str) -> typing.List[str]:
     """ return url list which may contains mirror url """
     # https://github.com/JinjunHan/iOSDeviceSupport
     github_repo = "JinjunHan/iOSDeviceSupport"
-    _alias = {
-        "12.5": "12.4.zip",
-        "14.6": "14.5.zip",
-    }
-    zip_name = _alias.get(version, f"{version}.zip")
+    zip_name = f"{version}.zip"
 
     # the code.aliyun slowlly
     # gitee requires login
@@ -60,6 +56,15 @@ def cache_developer_image(version: str) -> str:
     download developer image from github to local
     return image_zip_path
     """
+    _alias = {
+        "12.5": "12.4",
+        "14.6": "14.5",
+        "15.1": "15.0",
+    }
+    if version in _alias:
+        version = _alias[version]
+        logger.info("Use alternative developer image %s", version)
+
     # $HOME/.tidevice/device-support/12.2.zip
     local_device_support = get_app_dir("device-support")
     image_zip_path = os.path.join(local_device_support, version+".zip")
