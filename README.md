@@ -45,6 +45,7 @@ $ tidevice version
 ```
 
 ### 列出连接设备
+> 需先安装并启动`Itunes`
 ```bash
 $ tidevice list
 List of apple devices attached
