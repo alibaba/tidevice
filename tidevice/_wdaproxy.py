@@ -25,7 +25,7 @@ from .exceptions import MuxReplyError
 class WDAService:
     _DEFAULT_TIMEOUT = 30 # http request timeout
 
-    def __init__(self, d: Device, bundle_id: str = "com.facebook.*.xctrunner", env: dict={}, check_interval: float = 60):
+    def __init__(self, d: Device, bundle_id: str = "com.*.xctrunner", env: dict={}, check_interval: float = 60):
         self._d = d
         self._bundle_id = bundle_id
         self._service = ThreadService(self._keep_wda_running)

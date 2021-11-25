@@ -329,6 +329,8 @@ perf.stop()
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
 
+Python code style(ZH): https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/python_style_rules/#comments
+
 ## Alternatives
 - Go implemented: https://github.com/electricbubble/gidevice
 

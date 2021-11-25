@@ -9,11 +9,10 @@ import fnmatch
 import io
 import logging
 import os
-import pprint
+import pathlib
 import re
 import shutil
 import ssl
-import subprocess
 import sys
 import tempfile
 import threading
@@ -21,7 +20,6 @@ import time
 import typing
 import uuid
 import zipfile
-from collections import namedtuple
 from typing import Iterator, Optional, Tuple, Union
 
 import requests
@@ -46,14 +44,17 @@ from .exceptions import *
 logger = logging.getLogger(LOG.main)
 
 
-def pil_imread(data: Union[str, bytes, bytearray]) -> Image.Image:
-    """ Convert data to PIL.Image.Image """
+def pil_imread(data: Union[str, pathlib.Path, bytes, bytearray]) -> Image.Image:
+    """ Convert data(path, binary) to PIL.Image.Image
+    
+    Raises:
+        TypeError
+    """
     if isinstance(data, (bytes, bytearray)):
         memory_fd = io.BytesIO(data)
         im = Image.open(memory_fd)
         im.load()
         del (memory_fd)
-        del (data)
         return im
     elif isinstance(data, str):
         return Image.open(data)
@@ -943,7 +944,7 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, fuzzy_bundle_id="com.facebook.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
+    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
 
