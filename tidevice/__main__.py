@@ -640,7 +640,7 @@ _commands = [
         flags=[
             dict(args=['--debug'], action='store_true', help='show debug log'),
             dict(args=['-B', '--bundle_id', '--bundle-id'],
-                 default="com.facebook.*.xctrunner",
+                 default="com.*.xctrunner",
                  help="bundle id of the test to launch"),
             dict(args=['--target-bundle-id'],
                  help='bundle id of the target app [optional]'),
@@ -656,7 +656,7 @@ _commands = [
          command='wdaproxy',
          flags=[
              dict(args=['-B', '--bundle_id'],
-                  default="com.facebook.*.xctrunner",
+                  default="com.*.xctrunner",
                   help="test application bundle id"),
              dict(args=['-p', '--port'],
                   type=int,
