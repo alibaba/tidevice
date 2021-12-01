@@ -33,6 +33,8 @@ The extra *openssl*, contains device pair support. If can install it, try
 pip3 install -U tidevice
 ```
 
+> Windows need to install and launch iTunes
+
 ## Usage
 
 ### Show version number

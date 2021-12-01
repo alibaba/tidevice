@@ -36,6 +36,8 @@ pip3 install -U "tidevice[openssl]"   # Recommend
 pip3 install -U tidevice
 ```
 
+> Windows电脑需要安装并启动Itunes
+
 ## 使用
 
 ### 查看版本号
