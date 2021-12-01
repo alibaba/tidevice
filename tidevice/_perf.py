@@ -24,7 +24,7 @@ class DataType(str, enum.Enum):
     NETWORK = "network"  # 流量
     FPS = "fps"
     PAGE = "page"
-
+    GPU = "gpu"
 
 CallbackType = typing.Callable[[DataType, dict], None]
 
@@ -104,6 +104,15 @@ def iter_fps(d: BaseDevice) -> Iterator[Any]:
         fps = data['CoreAnimationFramesPerSecond'] # fps from GPU
         # print("FPS:", fps)
         yield DataType.FPS, {"fps": fps, "time": time.time(), "value": fps}
+
+
+def iter_gpu(d: BaseDevice) -> Iterator[Any]:
+    for data in d.instruments.iter_opengl_data():
+        device_utilization = data['Device Utilization %']  # Device Utilization
+        tiler_utilization = data['Tiler Utilization %'] # Tiler Utilization
+        renderer_utilization = data['Renderer Utilization %'] # Renderer Utilization
+        yield DataType.GPU, {"device": device_utilization, "renderer": renderer_utilization,
+                             "tiler": tiler_utilization, "time": time.time(), "value": device_utilization}
 
 
 def iter_screenshot(d: BaseDevice) -> Iterator[Tuple[DataType, dict]]:
@@ -295,6 +304,8 @@ class Performance():
             iters.append(iter_cpu_memory(self._d, self._rp))
         if DataType.FPS in self._perfs:
             iters.append(iter_fps(self._d))
+        if DataType.GPU in self._perfs:
+            iters.append(iter_gpu(self._d))
         if DataType.SCREENSHOT in self._perfs:
             iters.append(set_interval(iter_screenshot(self._d), 1.0))
         if DataType.NETWORK in self._perfs:
