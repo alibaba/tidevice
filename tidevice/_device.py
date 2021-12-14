@@ -655,7 +655,7 @@ class BaseDevice():
                                            args=args,
                                            kill_running=kill_running)
 
-    def app_install(self, file_or_url: Union[str, typing.IO]):
+    def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
         """
         Args:
             file_or_url: local path or url
@@ -664,7 +664,7 @@ class BaseDevice():
             bundle_id
 
         Raises:
-            ServiceError
+            ServiceError, IOError
 
         # Copying 'WebDriverAgentRunner-Runner-resign.ipa' to device... DONE.
         # Installing 'com.facebook.WebDriverAgentRunner.xctrunner'
@@ -683,63 +683,64 @@ class BaseDevice():
         #  - Complete
         """
         is_url = bool(re.match(r"^https?://", file_or_url))
-        with tempfile.TemporaryDirectory() as tmpdir:
-            if is_url:
-                url = file_or_url
-                filepath = os.path.join(tmpdir, "_tmp.ipa")
-                logger.info("Download to tmp path: %s", filepath)
-                with requests.get(url, stream=True) as r:
-                    filesize = int(r.headers.get("content-length"))
-                    preader = ProgressReader(r.raw, filesize)
-                    with open(filepath, "wb") as f:
-                        shutil.copyfileobj(preader, f)
-                    preader.finish()
-            elif os.path.isfile(file_or_url):
-                filepath = file_or_url
-            else:
-                raise RuntimeError(
-                    "Local path {} not exist".format(file_or_url))
+        if is_url:
+            url = file_or_url
+            tmpdir = tempfile.TemporaryDirectory()
+            filepath = os.path.join(tmpdir.name, "_tmp.ipa")
+            logger.info("Download to tmp path: %s", filepath)
+            with requests.get(url, stream=True) as r:
+                filesize = int(r.headers.get("content-length"))
+                preader = ProgressReader(r.raw, filesize)
+                with open(filepath, "wb") as f:
+                    shutil.copyfileobj(preader, f)
+                preader.finish()
+        elif os.path.isfile(file_or_url):
+            filepath = file_or_url
+        else:
+            raise IOError(
+                "Local path {} not exist".format(file_or_url))
 
-            conn = self.start_service(LockdownService.AFC)
-            afc = Sync(conn)
+        conn = self.start_service(LockdownService.AFC)
+        afc = Sync(conn)
 
-            ipa_tmp_dir = "PublicStaging"
-            if not afc.exists(ipa_tmp_dir):
-                afc.mkdir(ipa_tmp_dir)
-            ir = IPAReader(filepath)
-            bundle_id = ir.get_bundle_id()
-            ir.close()
+        ipa_tmp_dir = "PublicStaging"
+        if not afc.exists(ipa_tmp_dir):
+            afc.mkdir(ipa_tmp_dir)
+        ir = IPAReader(filepath)
+        bundle_id = ir.get_bundle_id()
+        short_version = ir.get_short_version()
+        ir.close()
 
-            print("Copying {!r} to device...".format(filepath), end=" ")
-            sys.stdout.flush()
-            target_path = ipa_tmp_dir + "/" + bundle_id + ".ipa"
+        print("Copying {!r} to device...".format(filepath), end=" ")
+        sys.stdout.flush()
+        target_path = ipa_tmp_dir + "/" + bundle_id + ".ipa"
 
-            filesize = os.path.getsize(filepath)
-            with open(filepath, 'rb') as f:
-                preader = ProgressReader(f, filesize)
-                afc.push_content(target_path, preader)
-            preader.finish()
-            print("DONE.")
+        filesize = os.path.getsize(filepath)
+        with open(filepath, 'rb') as f:
+            preader = ProgressReader(f, filesize)
+            afc.push_content(target_path, preader)
+        preader.finish()
+        print("DONE.")
 
-            print("Installing {!r}".format(bundle_id))
-            inst = self.installation
-            inst.send_packet({
-                'Command': 'Install',
-                'ClientOptions': {
-                    'CFBundleIdentifier': bundle_id,
-                },
-                'PackagePath': target_path
-            })
-            while True:
-                progress = inst.recv_packet()
-                if progress.get("Status") == 'Complete':
-                    print("Complete")
-                    return bundle_id
-                if 'Error' in progress:
-                    logger.error("%s", progress['Error'])
-                    logger.error("%s", progress.get("ErrorDescription"))
-                    raise ServiceError(progress['Error'])
-                print("- {Status} ({PercentComplete}%)".format(**progress))
+        print("Installing {!r} {!r}".format(bundle_id, short_version))
+        inst = self.installation
+        inst.send_packet({
+            'Command': 'Install',
+            'ClientOptions': {
+                'CFBundleIdentifier': bundle_id,
+            },
+            'PackagePath': target_path
+        })
+        while True:
+            progress = inst.recv_packet()
+            if progress.get("Status") == 'Complete':
+                print("Complete")
+                return bundle_id
+            if 'Error' in progress:
+                logger.error("%s", progress['Error'])
+                logger.error("%s", progress.get("ErrorDescription"))
+                raise ServiceError(progress['Error'])
+            print("- {Status} ({PercentComplete}%)".format(**progress))
 
     def app_uninstall(self, bundle_id: str) -> bool:
         """
