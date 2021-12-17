@@ -8,13 +8,11 @@ import sys
 import tempfile
 import typing
 import zipfile
-from functools import lru_cache
 from pprint import pprint
 from typing import Union
 
-from cached_property import cached_property
-
 from . import bplist, plistlib2
+from ._compat import cache
 from .exceptions import IPAError
 
 
@@ -52,7 +50,7 @@ class IPAReader(zipfile.ZipFile):
         else:
             raise IPAError('unable to parse embedded.mobileprovision file')
 
-    @lru_cache
+    @cache
     def get_infoplist(self) -> dict:
         finfo = self.get_infoplist_zipinfo()
         with self.open(finfo, 'r') as fp:
