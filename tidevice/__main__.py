@@ -400,6 +400,11 @@ def cmd_pair(args: argparse.Namespace):
     print("Paired with device", d.udid, "HostID:", pair_record['HostID'])
 
 
+def cmd_unpair(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    d.delete_pair_record()
+    
+
 def cmd_fsync(args: argparse.Namespace):
     d = _udid2device(args.udid)
     if args.bundle_id:
@@ -688,6 +693,7 @@ _commands = [
          flags=[dict(args=['--download-all'], action="store_true", help="download all developer to local")],
          help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),
+    dict(action=cmd_unpair, command="unpair", help="unpair device"),
     dict(action=cmd_perf,
          command="perf",
          flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),

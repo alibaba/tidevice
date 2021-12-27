@@ -58,9 +58,7 @@ def cache_developer_image(version: str) -> str:
     """
     _alias = {
         "12.5": "12.4",
-        "14.6": "14.5",
-        "15.1": "15.0",
-        "15.2": "15.0",
+        "15.3": "15.2",
     }
     if version in _alias:
         version = _alias[version]

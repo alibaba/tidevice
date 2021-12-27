@@ -43,6 +43,15 @@ $ tidevice version
 0.1.0
 ```
 
+### Pair
+```bash
+$ tidevice pair
+# pair device
+
+$ tidevice unpair
+# unpair device
+```
+
 ### List connected devices
 ```bash
 $ tidevice list

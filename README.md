@@ -46,6 +46,15 @@ $ tidevice version
 0.1.0
 ```
 
+### 配对
+```bash
+$ tidevice pair
+# 配对设备
+
+$ tidevice unpair
+# 取消配对设备
+```
+
 ### 列出连接设备
 ```bash
 $ tidevice list

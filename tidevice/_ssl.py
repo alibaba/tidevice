@@ -74,7 +74,7 @@ def make_cert(req: X509Req, ca_pkey: PKey) -> X509:
     cert.set_notBefore(x509_time(minutes=-1))
     cert.set_notAfter(x509_time(days=30))
     # noinspection PyTypeChecker
-    cert.sign(ca_pkey, 'sha1')
+    cert.sign(ca_pkey, 'sha256')
     return cert
 
 
