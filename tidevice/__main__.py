@@ -36,6 +36,14 @@ um = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
 
 
+def get_um() -> Usbmux:
+    global um
+    if not um:
+        um = Usbmux()
+    return um
+
+
+
 def _complete_udid(udid: Optional[str] = None) -> str:
     infos = um.device_list()
     if not udid:
