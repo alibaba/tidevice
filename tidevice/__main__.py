@@ -36,7 +36,7 @@ um = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
 
 
-def get_um() -> Usbmux:
+def init_um() -> Usbmux:
     global um
     if not um:
         um = Usbmux()
