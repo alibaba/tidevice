@@ -507,8 +507,14 @@ def cmd_perf(args: argparse.Namespace):
         perf.stop()
 
 
+def cmd_set_assistive_touch(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    d.set_assistive_touch(args.enabled)
+
+
 def cmd_test(args: argparse.Namespace):
     print("Just test")
+    
     # files = os.listdir(path)
 
     # Here need device unlocked
@@ -699,6 +705,12 @@ _commands = [
          flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),
                 dict(args=['-o'], dest='perfs', help='cpu,memory,fps,network,screenshot. separate by ","', required=False),],
          help="performance of app"),
+    dict(action=cmd_set_assistive_touch,
+         command="set-assistive-touch",
+         flags=[
+             dict(args=['--enabled'], action='store_true', help="set enabled")
+         ],
+         help="command for developer"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 

@@ -89,6 +89,16 @@ class BaseDevice():
         self._pair_record = None
 
     @property
+    def debug(self) -> bool:
+        return logging.getLogger(LOG.main).level == logging.DEBUG
+    
+    @debug.setter
+    def debug(self, v: bool):
+        # log setup
+        setup_logger(LOG.main,
+            level=logging.DEBUG if v else logging.INFO)
+
+    @property
     def usbmux(self) -> Usbmux:
         return self._usbmux
 
@@ -277,6 +287,7 @@ class BaseDevice():
         device_id = self.info.device_id
         conn = self._usbmux.create_connection()
         payload = {
+            # 'BundleID': 'com.apple.iTunes',
             'DeviceID': device_id,  # Required
             'MessageType': 'Connect',  # Required
             'PortNumber': _port,  # Required
@@ -385,6 +396,29 @@ class BaseDevice():
             with self.create_session() as conn:
                 ret = conn.send_recv_packet(request)
                 return ret['Value']
+    
+    def set_value(self, domain: str, key: str, value: typing.Any):
+        request = {
+            "Domain": domain,
+            "Key": key,
+            "Label": "oa",
+            "Request": "SetValue",
+            "Value": value
+        }
+        with self.create_session() as s:
+            ret = s.send_recv_packet(request)
+            error = ret.get("Error")
+            if error:
+                raise ServiceError(error)
+
+    def set_assistive_touch(self, enabled: bool):
+        """
+        show or close screen assitive touch button
+
+        Raises:
+            ServiceError
+        """
+        self.set_value("com.apple.Accessibility", "AssistiveTouchEnabledByiTunes", enabled)
 
     def screen_info(self) -> tuple:
         info = self.device_info("com.apple.mobile.iTunes")

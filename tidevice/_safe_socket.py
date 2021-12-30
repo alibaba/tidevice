@@ -10,12 +10,21 @@ import socket
 import ssl
 import struct
 import plistlib
+import threading
 
 from typing import Union, Any
 from .exceptions import *
 from ._proto import PROGRAM_NAME
 
 logger = logging.getLogger(PROGRAM_NAME)
+
+_n = [0]
+_nlock = threading.Lock()
+
+def get_uniq_id() -> int:
+    with _nlock:
+        _n[0] += 1
+        return _n[0]
 
 
 class SafeStreamSocket():
@@ -46,6 +55,11 @@ class SafeStreamSocket():
             family = socket.AF_INET
         self._sock = socket.socket(family, socket.SOCK_STREAM)
         self._sock.connect(addr)
+        self._id = get_uniq_id()
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     def get_socket(self) -> socket.socket:
         return self._sock
@@ -79,7 +93,7 @@ class SafeStreamSocket():
         self._sock = ssock
 
     def close(self):
-        logger.debug("Socket %r closed", self)
+        logger.debug("Socket %d closed", self._id)
         self._sock.close()
 
     def __enter__(self):
@@ -121,7 +135,7 @@ class PlistSocket(SafeStreamSocket):
         #if self.is_secure():
         #    logger.debug(secure_text + " send: %s", payload)
         #else:
-        # logger.debug("send: %s", payload)
+        logger.debug("SEND(%d): %s", self.id, payload)
 
         body_data = plistlib.dumps(payload)
         if self._first:  # first package
@@ -148,12 +162,11 @@ class PlistSocket(SafeStreamSocket):
         if 'PairRecordData' in payload:
             logger.debug("Recv pair record data ...")
         else:
-            #if self.is_secure():
+            # if self.is_secure():
             #    logger.debug(secure_text + " recv" + Color.END + ": %s",
             #                 payload)
-            #else:
-            pass
-            # logger.debug("recv: %s", payload)
+            # else:
+            logger.debug("RECV(%d): %s", self.id, payload)
         return payload
 
     def send_recv_packet(self, payload: dict) -> dict:
