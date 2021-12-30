@@ -7,7 +7,7 @@ UDID=$(idevice_id -l)
 echo "UDID: ${UDID:?} $(idevicename -u $UDID)"
 
 # 保存设备配对公钥
-#tidevice savesslfile # not implemented yet.
+tidevice savesslfile # not implemented yet.
 
 PEMFILE=ssl/${UDID}_root.pem
 if ! test -f $PEMFILE

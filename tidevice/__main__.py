@@ -8,14 +8,15 @@ import base64
 import json
 import logging
 import os
+import pathlib
 import re
 import subprocess
 import sys
 import time
 from collections import defaultdict
+from datetime import datetime
 from pprint import pformat, pprint
 from typing import Optional, Union
-from datetime import datetime
 
 import requests
 from logzero import setup_logger
@@ -512,16 +513,18 @@ def cmd_set_assistive_touch(args: argparse.Namespace):
     d.set_assistive_touch(args.enabled)
 
 
+def cmd_savesslfile(args: argparse.Namespace):
+    os.makedirs("ssl", exist_ok=True)
+
+    d = _udid2device(args.udid)
+    pr = d.pair_record
+    
+    pathlib.Path(f"ssl/{d.udid}_host.pem").write_bytes(pr['HostCertificate'])
+    pathlib.Path(f"ssl/{d.udid}_root.pem").write_bytes(pr['RootCertificate'])
+
+
 def cmd_test(args: argparse.Namespace):
     print("Just test")
-    
-    # files = os.listdir(path)
-
-    # Here need device unlocked
-    # signatures = d.imagemounter.lookup()
-    # if signatures:
-    #     logger.info("DeveloperImage already mounted")
-    #     return
 
 
 _commands = [
@@ -711,6 +714,9 @@ _commands = [
              dict(args=['--enabled'], action='store_true', help="set enabled")
          ],
          help="command for developer"),
+    dict(action=cmd_savesslfile,
+         command="savesslfile",
+         help="save to ssl/xxxx_root.pem and ssl/xxxx_host.pem"),
     dict(action=cmd_test, command="test", help="command for developer"),
 ]
 
