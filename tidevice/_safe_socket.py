@@ -27,13 +27,14 @@ def get_uniq_id() -> int:
         return _n[0]
 
 
-class SafeStreamSocket():
+class SafeStreamSocket:
     def __init__(self, addr: Union[str, tuple, socket.socket,
                                    Any]):
         """
         Args:
             addr: can be /var/run/usbmuxd or (localhost, 27015)
         """
+        self._id = get_uniq_id()
         self._sock = None
         if isinstance(addr, socket.socket):
             self._sock = addr
@@ -55,7 +56,7 @@ class SafeStreamSocket():
             family = socket.AF_INET
         self._sock = socket.socket(family, socket.SOCK_STREAM)
         self._sock.connect(addr)
-        self._id = get_uniq_id()
+        
 
     @property
     def id(self) -> int:
