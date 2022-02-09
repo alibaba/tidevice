@@ -38,7 +38,7 @@ from ._safe_socket import *
 from ._sync import Sync
 from ._types import DeviceInfo
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir
+from ._utils import ProgressReader, get_app_dir, set_socket_timeout
 from .exceptions import *
 
 logger = logging.getLogger(LOG.main)
@@ -294,9 +294,10 @@ class BaseDevice():
             'ProgName': PROGRAM_NAME,
         }
         logger.debug("Send payload: %s", payload)
-        data = conn.send_recv_packet(payload)
-        logger.debug("connect port: %d", _port)
+        with set_socket_timeout(conn.get_socket(), 5.0):
+            data = conn.send_recv_packet(payload)
         self._usbmux._check(data)
+        logger.debug("connected to port: %d", _port)
 
         if _ssl:
             conn.switch_to_ssl(self.ssl_pemfile_path)

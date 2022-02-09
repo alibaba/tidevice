@@ -43,8 +43,9 @@ class Usbmux:
     def create_connection(self) -> PlistSocket:
         return PlistSocket(self.__address, self._next_tag())
 
-    def send_recv(self, payload: dict) -> dict:
+    def send_recv(self, payload: dict, timeout: float = None) -> dict:
         with self.create_connection() as s:
+            s.get_socket().settimeout(timeout)
             s.send_packet(payload)
             recv_data = s.recv_packet()
             self._check(recv_data)
@@ -73,7 +74,7 @@ class Usbmux:
             "kLibUSBMuxVersion": 3,
             # "ProcessID": 0, # Xcode send it processID
         }
-        data = self.send_recv(payload)
+        data = self.send_recv(payload, timeout=5)
         result = {}
         for item in data['DeviceList']:
             prop = item['Properties']

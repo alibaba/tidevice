@@ -220,3 +220,17 @@ def exec_command(cmds: typing.List[str], logfile):
                 p.wait(3)
             except subprocess.TimeoutExpired:
                 p.kill()
+
+
+@contextlib.contextmanager
+def set_socket_timeout(conn: socket.socket, value: float):
+    """Set conn.timeout to value
+    Save previous value, yield, and then restore the previous value
+    If 'value' is None, do nothing
+    """
+    old_value = conn.timeout
+    conn.settimeout(value)
+    try:
+        yield
+    finally:
+        conn.settimeout(old_value)
