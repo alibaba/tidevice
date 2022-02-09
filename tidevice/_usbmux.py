@@ -80,7 +80,7 @@ class Usbmux:
             info = DeviceInfo()
             info.udid = prop['SerialNumber']
             info.device_id = prop['DeviceID']
-            info.conn_type = prop['ConnectionType']
+            info.conn_type = prop['ConnectionType'].lower()
             if info.udid in result and info.conn_type == ConnectionType.NETWORK:
                 continue
             result[info.udid] = info
