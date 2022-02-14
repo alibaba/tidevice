@@ -26,6 +26,7 @@ import requests
 from cached_property import cached_property
 from logzero import setup_logger
 from PIL import Image
+from retry import retry
 
 from . import bplist
 from ._imagemounter import ImageMounter, cache_developer_image
@@ -273,6 +274,7 @@ class BaseDevice():
     def _system_BUID(self):
         return self.pair_record['SystemBUID']
 
+    @retry(OSError, tries=2, delay=3, logger=logger)
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,

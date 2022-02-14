@@ -25,6 +25,8 @@ import logging
 from collections import defaultdict, namedtuple
 from typing import Any, List, Optional, Tuple, Union, Iterator
 
+from retry import retry
+
 from . import bplist
 from . import struct2 as ct
 from ._safe_socket import PlistSocket
@@ -663,6 +665,7 @@ class ServiceInstruments(DTXService):
 
         self.call_message(channel, "killPid:", [pid], expects_reply=False)
 
+    @retry(ssl.SSLZeroReturnError, delay=3, jitter=1, tries=3, logger=logger)
     def app_running_processes(self):
         """
         Returns array of dict:
