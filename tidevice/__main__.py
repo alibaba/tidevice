@@ -436,8 +436,13 @@ def cmd_fsync(args: argparse.Namespace):
         arg1 = "./"
         if len(args.arguments) == 2:
             arg1 = args.arguments[1]
-        sync.pull(arg0, arg1)
-        print("pulled", arg0, "->", arg1)
+        src = pathlib.Path(arg0)
+        dst = pathlib.Path(arg1)
+        if dst.is_dir() and src.name and sync.stat(src).is_dir():
+            dst = dst.joinpath(src.name)
+
+        sync.pull(src, dst)
+        print("pulled", src, "->", dst)
     elif args.command == 'cat':
         for chunk in sync.iter_content(arg0):
             sys.stdout.write(chunk.decode('utf-8'))
