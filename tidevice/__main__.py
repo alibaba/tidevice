@@ -415,23 +415,29 @@ def cmd_fsync(args: argparse.Namespace):
 
     arg0 = args.arguments[0]
     if args.command == 'ls':
-        pprint(sync.listdir(arg0))
+        for filename in sync.listdir(arg0):
+            finfo = sync.stat(pathlib.Path(arg0) / filename)
+            if finfo.is_dir():
+                print(filename+"/")
+            else:
+                print("-", filename, finfo.st_size)
     elif args.command == 'rm':
         for arg in args.arguments:
             pprint(sync.remove(arg))
     elif args.command == 'stat':
         finfo = sync.stat(arg0)
-        print("Fmt:", finfo.st_ifmt)
+        print("IFMT:", finfo.st_ifmt)
         print("CTime:", finfo.st_ctime)
         print("MTime:", finfo.st_mtime)
         print("Size:", finfo.st_size)
     elif args.command == 'tree':
         sync.treeview(arg0, depth=-1)
     elif args.command == 'pull':
-        data = sync.pull_content(arg0)
-        with open(os.path.basename(arg0), 'wb') as f:
-            f.write(data)
-        print("pulled to", os.path.basename(arg0))
+        arg1 = "./"
+        if len(args.arguments) == 2:
+            arg1 = args.arguments[1]
+        sync.pull(arg0, arg1)
+        print("pulled", arg0, "->", arg1)
     elif args.command == 'cat':
         for chunk in sync.iter_content(arg0):
             sys.stdout.write(chunk.decode('utf-8'))

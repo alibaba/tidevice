@@ -5,9 +5,11 @@
 __all__ = [
     'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
-    "UsbmuxReplyCode", "InstrumentsService", "LOG"
+    "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult"
 ]
 
+from dataclasses import dataclass
+import datetime
 import enum
 
 
@@ -329,6 +331,25 @@ class UsbmuxReplyCode(int, enum.Enum):
     BadDevice = 2
     ConnectionRefused = 3
     BadVersion = 6
+
+
+@dataclass
+class StatResult:
+    st_ifmt: str
+    st_size: int
+    st_blocks: int
+    st_nlink: int
+    st_ctime: datetime.datetime
+    st_mtime: datetime.datetime
+    st_linktarget: str = None
+
+    def is_dir(self) -> bool:
+        return self.st_ifmt == "S_IFDIR"
+    
+    def is_link(self) -> bool:
+        return self.st_ifmt == "S_IFLNK"
+
+
 
 
 if __name__ == "__main__":

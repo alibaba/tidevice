@@ -249,6 +249,9 @@ $ tidevice fsync /DCIM/
 # inspect files in app iMovie
 $ tidevice fsync -B com.apple.iMovie ls /Documents/
 
+# download directory (also support pull single file)
+$ tidevice pull /Documents ./TmpDocuments/
+
 # 其他操作 rm cat pull push stat tree rmtree mkdir
 $ tidevice fsync -h
 

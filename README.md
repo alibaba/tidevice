@@ -277,6 +277,9 @@ $ tidevice fsync /DCIM/
 # 查看T3出行Documents中的内容
 $ tidevice fsync -B com.t3go.passenger ls /Documents/
 
+# 下载目录（也支持文件）
+$ tidevice pull /Documents ./TmpDocuments/
+
 # 其他操作 rm cat pull push stat tree rmtree mkdir
 $ tidevice fsync -h
 
