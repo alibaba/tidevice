@@ -264,7 +264,14 @@ def cmd_applist(args: argparse.Namespace):
     # appinfos = d.installation.list_installed()
     # apps = d.instruments.app_list()
     # pprint(apps)
-    for info in d.installation.iter_installed():
+    _type = args.type
+    app_type = {
+        "user": "User",
+        "system": "System",
+        "all": None,
+    }[_type]
+
+    for info in d.installation.iter_installed(app_type=app_type):
         # bundle_path = info['BundlePath']
         bundle_id = info['CFBundleIdentifier']
 
@@ -343,14 +350,14 @@ def cmd_relay(args: argparse.Namespace):
 def cmd_wdaproxy(args: argparse.Namespace):
     """ start xctest and relay """
     d = _udid2device(args.udid)
-    
+
     env = {}
     for kv in args.env or []:
         key, val = kv.split(":", 1)
         env[key] = val
     if env:
         logger.info("Launch env: %s", env)
-    
+
     serv = WDAService(d, args.bundle_id, env)
     serv.set_check_interval(args.check_interval)
 
@@ -404,7 +411,7 @@ def cmd_pair(args: argparse.Namespace):
 def cmd_unpair(args: argparse.Namespace):
     d = _udid2device(args.udid)
     d.delete_pair_record()
-    
+
 
 def cmd_fsync(args: argparse.Namespace):
     d = _udid2device(args.udid)
@@ -529,7 +536,7 @@ def cmd_savesslfile(args: argparse.Namespace):
 
     d = _udid2device(args.udid)
     pr = d.pair_record
-    
+
     pathlib.Path(f"ssl/{d.udid}_host.pem").write_bytes(pr['HostCertificate'])
     pathlib.Path(f"ssl/{d.udid}_root.pem").write_bytes(pr['RootCertificate'])
 
@@ -587,7 +594,12 @@ _commands = [
              dict(args=['bundle_id'], help='bundle identifier'),
          ],
          help="inspect app info"),
-    dict(action=cmd_applist, command="applist", help="list packages"),
+    dict(action=cmd_applist,
+         command="applist",
+         flags=[
+             dict(args=['--type'], default='user', help='filter app with type', choices=['user', 'system', 'all'])
+         ],
+         help="list packages"),
     dict(action=cmd_battery,
          command='battery',
          flags=[
@@ -617,8 +629,10 @@ _commands = [
     dict(action=cmd_shutdown, command="shutdown", help="shutdown device"),
     dict(action=cmd_parse,
          command="parse",
-         flags=[dict(args=['--all'], action='store_true', help='show all info'),
-                dict(args=['uri'], help="local path or url")],
+         flags=[
+             dict(args=['--all'], action='store_true', help='show all info'),
+             dict(args=['uri'], help="local path or url")
+         ],
          help="parse ipa bundle id"),
     dict(action=cmd_watch, command="watch", help="watch device"),
     dict(action=cmd_wait_for_device,
@@ -677,23 +691,32 @@ _commands = [
                  help="set env with format key:value, support multi -e"),
         ],
         help="run XCTest"),
-    dict(action=cmd_wdaproxy,
-         command='wdaproxy',
-         flags=[
-             dict(args=['-B', '--bundle_id'],
-                  default="com.*.xctrunner",
-                  help="test application bundle id"),
-             dict(args=['-p', '--port'],
-                  type=int,
-                  default=8100,
-                  help='pc listen port, set to 0 to disable port forward'),
-             dict(args=['-e', '--env'],
-                  action='append',
-                  help="set env with format key:value, support multi -e"),
-             dict(args=['--check-interval'], type=float, default=30.0,
-                  help="check if wda is alive every CHECK_INTERVAL seconds, stop check when set to 0"),
-         ],
-         help='keep WDA running and relay WDA service to pc'),
+    dict(
+        action=cmd_wdaproxy,
+        command='wdaproxy',
+        flags=[
+            dict(
+                args=['-B', '--bundle_id'],
+                default="com.*.xctrunner",
+                help="test application bundle id"),
+            dict(
+                args=['-p', '--port'],
+                type=int,
+                default=8100,
+                help='pc listen port, set to 0 to disable port forward'),
+            dict(
+                args=['-e', '--env'],
+                action='append',
+                help="set env with format key:value, support multi -e"),
+            dict(
+                args=['--check-interval'],
+                type=float,
+                default=30.0,
+                help=
+                "check if wda is alive every CHECK_INTERVAL seconds, stop check when set to 0"
+            ),
+        ],
+        help='keep WDA running and relay WDA service to pc'),
     dict(action=cmd_syslog, command='syslog', help="print iphone syslog"),
     dict(action=cmd_fsync,
          command="fsync",
@@ -710,14 +733,25 @@ _commands = [
     dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),
     dict(action=cmd_developer,
          command="developer",
-         flags=[dict(args=['--download-all'], action="store_true", help="download all developer to local")],
+         flags=[
+             dict(args=['--download-all'],
+                  action="store_true",
+                  help="download all developer to local")
+         ],
          help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),
     dict(action=cmd_unpair, command="unpair", help="unpair device"),
     dict(action=cmd_perf,
          command="perf",
-         flags=[dict(args=['-B', '--bundle_id'], help='app bundle id', required=True),
-                dict(args=['-o'], dest='perfs', help='cpu,memory,fps,network,screenshot. separate by ","', required=False),],
+         flags=[
+             dict(args=['-B', '--bundle_id'],
+                  help='app bundle id',
+                  required=True),
+             dict(args=['-o'],
+                  dest='perfs',
+                  help='cpu,memory,fps,network,screenshot. separate by ","',
+                  required=False),
+         ],
          help="performance of app"),
     dict(action=cmd_set_assistive_touch,
          command="set-assistive-touch",
