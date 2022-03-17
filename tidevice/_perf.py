@@ -250,8 +250,8 @@ def iter_network_flow(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
         #     continue
         yield DataType.NETWORK, {
             "timestamp": gen_stimestamp(),
-            "downFlow": nstat['rx.bytes'] / 1024,
-            "upFlow": nstat['tx.bytes'] / 1024
+            "downFlow": (nstat['rx.bytes'] or 0) / 1024,
+            "upFlow": (nstat['tx.bytes'] or 0) / 1024
         }
 
 
