@@ -548,13 +548,11 @@ class BaseDevice():
 
     @property
     def name(self):
-        with self.create_inner_connection() as s:
-            data = s.send_recv_packet({
-                'Request': 'GetValue',
-                'Key': 'DeviceName',
-                'Label': PROGRAM_NAME,
-            })
-            return data['Value']
+        return self.get_value("DeviceName", no_session=True)
+    
+    @property
+    def product_version(self) -> str:
+        return self.get_value("ProductVersion", no_session=True)
 
     def app_sync(self, bundle_id: str, command: str = "VendDocuments") -> Sync:
         # Change command(VendContainer -> VendDocuments)

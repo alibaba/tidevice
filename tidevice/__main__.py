@@ -81,8 +81,9 @@ def cmd_list(args: argparse.Namespace):
         try:
             _d = Device(udid, um)
             name = _d.name
+            product_version = _d.product_version
             if not args.json:
-                print(udid, name, conn_type)
+                print(f"{udid}\t{name}\t{product_version}\t{conn_type}")
         except MuxError:
             name = ""
         result.append(dict(udid=udid, name=name, conn_type=conn_type))

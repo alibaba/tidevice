@@ -86,7 +86,8 @@ class SafeStreamSocket:
         assert os.path.isfile(pemfile)
         self._dup_sock = self._sock.dup()
         
-        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context = ssl.SSLContext()
+        context.set_ciphers("ALL:@SECLEVEL=0") # fix md_too_weak error
         context.load_cert_chain(pemfile, keyfile=pemfile)
         context.check_hostname = False
         ssock = context.wrap_socket(self._sock, server_hostname="iphone.localhost")
