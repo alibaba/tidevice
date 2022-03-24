@@ -142,3 +142,5 @@ cython_debug/
 AUTHORS
 ChangeLog
 usbmuxd-dumpdata
+.DS_Store
+tmp/

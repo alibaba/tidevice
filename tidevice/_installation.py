@@ -18,19 +18,62 @@
 #  - GeneratingApplicationMap (90%)
 #  - Complete
 
-from pprint import pprint
+import logging
 from typing import Optional
-import typing
 
-from ._safe_socket import PlistSocket
-from ._utils import logger
+from ._proto import LOG
+from ._safe_socket import PlistSocketProperty
+from .exceptions import ServiceError
+
+logger = logging.getLogger(LOG.main)
 
 
-class Installation(PlistSocket):
+class Installation(PlistSocketProperty):
     SERVICE_NAME = "com.apple.mobile.installation_proxy"
 
-    def prepare(self):
-        return super().prepare()
+    def install(self, bundle_id: str, target_path: str):
+        """
+        Args:
+            bundle_id (str): package bundle id
+            target_path(str): AppleFileSystem path
+        
+        Raises:
+            ServiceError
+        """
+        self.send_packet({
+            'Command': 'Install',
+            'ClientOptions': {
+                'CFBundleIdentifier': bundle_id,
+            },
+            'PackagePath': target_path
+        })
+        while True:
+            progress = self.recv_packet()
+            if progress.get("Status") == 'Complete':
+                print("Complete")
+                return bundle_id
+            if 'Error' in progress:
+                logger.error("%s", progress['Error'])
+                logger.error("%s", progress.get("ErrorDescription"))
+                raise ServiceError(progress['Error'])
+            print("- {Status} ({PercentComplete}%)".format(**progress))
+
+    def uninstall(self, bundle_id: str) -> bool:
+        self.send_packet({
+            "Command": "Uninstall",
+            "ApplicationIdentifier": bundle_id
+        })
+        print("Uninstalling {!r}".format(bundle_id))
+        while True:
+            data = self.recv_packet()
+            if data.get("Status") == 'Complete':
+                print("Complete", flush=True)
+                return True
+            if 'Error' in data:
+                logger.error("%s", data['Error'])
+                logger.error("%s", data.get("ErrorDescription"))
+                return False
+            print("- {Status} ({PercentComplete}%)".format(**data), flush=True)
 
     def lookup(self, bundle_id: str) -> Optional[dict]:
         """
@@ -112,13 +155,13 @@ class Installation(PlistSocket):
             }
         }
         """
-        self.send_packet({
+        self.psock.send_packet({
             "Command": "Lookup",
             "ClientOptions": {
                 "BundleIDs": [bundle_id]
             }
         })
-        ret = self.recv_packet()
+        ret = self.psock.recv_packet()
         # Most used attributes
         # ApplicationType
         # CFBundleDisplayName
@@ -170,13 +213,13 @@ class Installation(PlistSocket):
             options['ReturnAttributes'] = attrs
         # options['ShowLaunchProhibitedApps'] = True 
 
-        self.send_packet({
+        self.psock.send_packet({
             "Command": "Browse",
             "ClientOptions": options,
         })
         # })
         while True:
-            data = self.recv_packet()
+            data = self.psock.recv_packet()
             if data['Status'] == 'Complete':
                 break
             for appinfo in data['CurrentList']:

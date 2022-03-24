@@ -16,7 +16,7 @@ from typing import Iterator, List, Union
 from . import bplist
 from . import struct2 as ct
 from ._proto import *
-from ._safe_socket import PlistSocket
+from ._safe_socket import PlistSocketProperty
 from ._utils import pathjoin
 from .exceptions import MuxError, MuxServiceError
 
@@ -38,13 +38,19 @@ FHeader = ct.Struct("FHeader",
 logger = logging.getLogger(PROGRAM_NAME)
 
 
-class Sync(PlistSocket):
+class Sync(PlistSocketProperty):
     def prepare(self):
         self.__tag = -1
 
     def _next_tag(self):
         self.__tag += 1
         return self.__tag
+    
+    def recvall(self, size: int) -> bytearray:
+        return self.psock.recvall(size)
+    
+    def sendall(self, data: typing.Union[bytes, bytearray]) -> int:
+        return self.psock.sendall(data)
 
     def _send(self, op: AFC, data: bytes, payload: bytes = b''):
         total_len = FHeader.size + len(data) + len(payload)

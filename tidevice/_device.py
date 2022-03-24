@@ -20,7 +20,7 @@ import time
 import typing
 import uuid
 import zipfile
-from typing import Iterator, Optional, Tuple, Union
+from typing import Iterator, Optional, Union
 
 import requests
 from cached_property import cached_property
@@ -366,15 +366,6 @@ class BaseDevice():
             domain: can be found in "ideviceinfo -h", eg: com.apple.disk_usage
         """
         return self.get_value(domain=domain)
-        # with self.create_session() as conn:
-        #     packet = {
-        #         "Request": "GetValue",
-        #         "Label": PROGRAM_NAME,
-        #     }
-        #     if domain:
-        #         packet["Domain"] = domain
-        #     ret = conn.send_recv_packet(packet)
-        #     return ret['Value']
 
     def get_value(self, key: str = '', domain: str = "", no_session: bool = False):
         """ key can be: ProductVersion
@@ -735,16 +726,17 @@ class BaseDevice():
             raise IOError(
                 "Local path {} not exist".format(file_or_url))
 
+        ir = IPAReader(filepath)
+        bundle_id = ir.get_bundle_id()
+        short_version = ir.get_short_version()
+        ir.close()
+
         conn = self.start_service(LockdownService.AFC)
         afc = Sync(conn)
 
         ipa_tmp_dir = "PublicStaging"
         if not afc.exists(ipa_tmp_dir):
             afc.mkdir(ipa_tmp_dir)
-        ir = IPAReader(filepath)
-        bundle_id = ir.get_bundle_id()
-        short_version = ir.get_short_version()
-        ir.close()
 
         print("Copying {!r} to device...".format(filepath), end=" ")
         sys.stdout.flush()
@@ -758,45 +750,13 @@ class BaseDevice():
         print("DONE.")
 
         print("Installing {!r} {!r}".format(bundle_id, short_version))
-        inst = self.installation
-        inst.send_packet({
-            'Command': 'Install',
-            'ClientOptions': {
-                'CFBundleIdentifier': bundle_id,
-            },
-            'PackagePath': target_path
-        })
-        while True:
-            progress = inst.recv_packet()
-            if progress.get("Status") == 'Complete':
-                print("Complete")
-                return bundle_id
-            if 'Error' in progress:
-                logger.error("%s", progress['Error'])
-                logger.error("%s", progress.get("ErrorDescription"))
-                raise ServiceError(progress['Error'])
-            print("- {Status} ({PercentComplete}%)".format(**progress))
+        self.installation.install(bundle_id, target_path)
 
     def app_uninstall(self, bundle_id: str) -> bool:
         """
         Note: It seems always return True
         """
-        ins = self.installation
-        ins.send_packet({
-            "Command": "Uninstall",
-            "ApplicationIdentifier": bundle_id
-        })
-        print("Uninstalling {!r}".format(bundle_id))
-        while True:
-            data = ins.recv_packet()
-            if data.get("Status") == 'Complete':
-                print("Complete")
-                return True
-            if 'Error' in data:
-                logger.error("%s", data['Error'])
-                logger.error("%s", data.get("ErrorDescription"))
-                return False
-            print("- {Status} ({PercentComplete}%)".format(**data))
+        return self.installation.uninstall(bundle_id)
 
     def _connect_testmanagerd_lockdown(self):
         if self.major_version() >= 14:
@@ -819,7 +779,7 @@ class BaseDevice():
             if isinstance(conn._sock, ssl.SSLSocket):
                 conn._sock = conn._dup_sock
         return ServiceInstruments(conn)
-
+    
     @property
     def instruments(self) -> ServiceInstruments:
         return self.connect_instruments()

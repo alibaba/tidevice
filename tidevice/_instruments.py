@@ -15,22 +15,21 @@ DTXPayload = (DTXPayloadHeader + DTXPayloadBody)
 
 import enum
 import io
-import pprint
+import logging
 import queue
-import ssl
 import struct
 import threading
 import typing
-import logging
+import weakref
 from collections import defaultdict, namedtuple
-from typing import Any, List, Optional, Tuple, Union, Iterator
+from typing import Any, Iterator, List, Optional, Tuple, Union
 
 from retry import retry
 
 from . import bplist
 from . import struct2 as ct
-from ._safe_socket import PlistSocket
-from ._proto import InstrumentsService, LOG
+from ._proto import LOG, InstrumentsService
+from ._safe_socket import PlistSocketProperty
 from .exceptions import MuxError, ServiceError
 
 logger = logging.getLogger(LOG.xctest)
@@ -268,11 +267,11 @@ class AUXMessageBuffer(object):
     #     else:
     #         self.append_obj(v)
 
+class DTXService(PlistSocketProperty):
 
-class DTXService(PlistSocket):
     def prepare(self):
         super().prepare()
-
+    
         self._last_message_id = 0
         self._last_channel_id = 0
         self._channels = {}  # map channel str to channel code
@@ -374,6 +373,8 @@ class DTXService(PlistSocket):
         Returns:
             message_id
         """
+        if self.psock.closed:
+            raise ServiceError("SocketConnectionInvalid")
         if message_id is None:
             conversation_index = 0
             _message_id = self._next_message_id()
@@ -391,7 +392,7 @@ class DTXService(PlistSocket):
         data = bytearray()
         data.extend(mheader)
         data.extend(payload)
-        self.sendall(data)
+        self.psock.sendall(data)
         return _message_id
 
     def recv_dtx_message(self) -> Tuple[Any, bytearray]:
@@ -476,7 +477,7 @@ class DTXService(PlistSocket):
         mheader = None
 
         while True:
-            data = self.recvall(0x20)
+            data = self.psock.recvall(0x20)
             h = DTXMessageHeader.parse(data)
             # print("frag:", fragment_id, fragment_count)
             if h.magic != 0x1F3D5B79:
@@ -494,7 +495,7 @@ class DTXService(PlistSocket):
                 if h.fragment_count > 1:
                     continue
 
-            rawdata = self.recvall(h.payload_length)
+            rawdata = self.psock.recvall(h.payload_length)
             payload.extend(rawdata)
 
             if h.fragment_id == h.fragment_count - 1:
@@ -553,7 +554,7 @@ class DTXService(PlistSocket):
         return ret
 
     def _drain_background(self):
-        threading.Thread(target=self._drain, daemon=True).start()
+        threading.Thread(name="DTXMessage", target=self._drain, daemon=True).start()
 
     def _drain(self):
         try:
@@ -567,6 +568,9 @@ class DTXService(PlistSocket):
                     if not self._stop_event.is_set():
                         raise
                     break
+        except:
+            if not self._stop_event.is_set():
+                logger.exception("drain error")
         finally:
             logger.debug("dtxm socket closed")
             # notify all quited
@@ -618,7 +622,7 @@ class DTXService(PlistSocket):
     def close(self):
         """ stop background """
         self._stop_event.set()
-        super().close()
+        self.psock.close()
 
     def wait(self):
         while not self._quitted.wait(.1):
@@ -628,6 +632,10 @@ class DTXService(PlistSocket):
 class ServiceInstruments(DTXService):
     _SERVICE_DEVICEINFO = 'com.apple.instruments.server.services.deviceinfo'
     _SERVICE_PROCESS_CONTROL = "com.apple.instruments.server.services.processcontrol"
+
+    def prepare(self):
+        super().prepare()
+        self._finalizer = weakref.finalize(self, self.close)
 
     def app_launch(self,
                    bundle_id: str,

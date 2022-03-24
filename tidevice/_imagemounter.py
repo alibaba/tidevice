@@ -11,7 +11,7 @@ from typing import List
 import retry
 import requests
 
-from ._safe_socket import PlistSocket
+from ._safe_socket import PlistSocketProperty
 from ._utils import get_app_dir, logger
 from .exceptions import MuxError, MuxServiceError
 
@@ -89,7 +89,7 @@ def cache_developer_image(version: str) -> str:
     return image_zip_path
 
 
-class ImageMounter(PlistSocket):
+class ImageMounter(PlistSocketProperty):
     SERVICE_NAME = "com.apple.mobile.mobile_image_mounter"
 
     def prepare(self):
@@ -99,7 +99,7 @@ class ImageMounter(PlistSocket):
         """
         Check image signature
         """
-        ret = self.send_recv_packet({
+        ret = self.psock.send_recv_packet({
             "Command": "LookupImage",
             "ImageType": image_type,
         })
@@ -142,7 +142,7 @@ class ImageMounter(PlistSocket):
                 signature_content: bytes,
                 image_type: str = "Developer"):
 
-        ret = self.send_recv_packet({
+        ret = self.psock.send_recv_packet({
             "Command": "ReceiveBytes",
             "ImageSignature": signature_content,
             "ImageSize": image_size,
@@ -159,21 +159,21 @@ class ImageMounter(PlistSocket):
             chunk = image_reader.read(chunk_size)
             if not chunk:
                 break
-            self.sendall(chunk)
+            self.psock.sendall(chunk)
 
-        ret = self.recv_packet()
+        ret = self.psock.recv_packet()
         self._check_error(ret)
         
         assert ret['Status'] == 'Complete'
         logger.info("Push complete")
 
-        self.send_packet({
+        self.psock.send_packet({
             "Command": "MountImage",
             "ImagePath": "/private/var/mobile/Media/PublicStaging/staging.dimag",
             "ImageSignature": signature_content, # FIXME(ssx): ...
             "ImageType": image_type,
         })
-        ret = self.recv_packet()
+        ret = self.psock.recv_packet()
         if 'DetailedError' in ret:
             if 'is already mounted at /Developer' in ret['DetailedError']:
                 raise MuxError("DeveloperImage is already mounted")
