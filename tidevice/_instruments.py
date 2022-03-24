@@ -665,7 +665,6 @@ class ServiceInstruments(DTXService):
 
         self.call_message(channel, "killPid:", [pid], expects_reply=False)
 
-    @retry(ssl.SSLZeroReturnError, delay=3, jitter=1, tries=3, logger=logger)
     def app_running_processes(self):
         """
         Returns array of dict:

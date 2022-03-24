@@ -294,7 +294,7 @@ class Performance():
     def start(self, bundle_id: str, callback: CallbackType = None):
         if not callback:
             # 默认不输出屏幕的截图（暂时没想好怎么处理）
-            callback = lambda _type, data: print(_type.value, data) if _type != DataType.SCREENSHOT and _type in self._perfs else None
+            callback = lambda _type, data: print(_type.value, data, flush=True) if _type != DataType.SCREENSHOT and _type in self._perfs else None
         self._rp = RunningProcess(self._d, bundle_id)
         self._thread_start(callback)
 

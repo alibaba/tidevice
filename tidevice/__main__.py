@@ -84,9 +84,10 @@ def cmd_list(args: argparse.Namespace):
             product_version = _d.product_version
             if not args.json:
                 print(f"{udid}\t{name}\t{product_version}\t{conn_type}")
+            else:
+                result.append(dict(udid=udid, name=name, conn_type=conn_type, product_version=product_version))
         except MuxError:
             name = ""
-        result.append(dict(udid=udid, name=name, conn_type=conn_type))
     if args.json:
         _print_json(result)
 
@@ -516,7 +517,7 @@ def cmd_perf(args: argparse.Namespace):
     perf = Performance(d, perfs=perfs)
 
     def _cb(_type: DataType, data):
-        print(_type.value, data)
+        print(_type.value, data, flush=True)
 
     try:
         perf.start(args.bundle_id, callback=_cb)
