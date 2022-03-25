@@ -11,12 +11,11 @@ logger = logging.getLogger(LOG.main)
 # Ref: https://github.com/libimobiledevice/libimobiledevice/blob/master/tools/idevicecrashreport.c
 
 class CrashManager(object):
-    def __init__(self, move_conn, copy_conn, output_dir, filter_on=False):
+    def __init__(self, move_conn, copy_conn, output_dir):
         self._afc = None
         self._move_coon = move_conn
         self._copy_conn = copy_conn
         self._output_dir = output_dir
-        self._filter_on = filter_on
         
         self._flush()
         self._afc = Sync(self._copy_conn)

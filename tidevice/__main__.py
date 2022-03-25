@@ -332,7 +332,7 @@ def cmd_battery(args: argparse.Namespace):
 def cmd_crash(args: argparse.Namespace):
     s_time = time.time()
     d = _udid2device(args.udid)
-    d.execute_crash_commands(args.out, args.command, args.filter)
+    d.execute_crash_commands(args.out, args.command)
     logger.info("Cost: {}s".format(round(time.time() - s_time), 2))
 
 def cmd_developer(args: argparse.Namespace):
