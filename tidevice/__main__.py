@@ -26,6 +26,7 @@ from ._imagemounter import cache_developer_image
 from ._ipautil import IPAReader
 from ._perf import DataType
 from ._proto import LOG, MODELS, PROGRAM_NAME
+from ._types import ConnectionType
 from ._relay import relay
 from ._usbmux import Usbmux
 from ._utils import get_app_dir, get_binary_by_name, is_atty
@@ -33,33 +34,34 @@ from ._version import __version__
 from ._wdaproxy import WDAService
 from .exceptions import MuxError, MuxServiceError, ServiceError
 
-um = None  # Usbmux
+um: Usbmux = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
 
 
 def _complete_udid(udid: Optional[str] = None) -> str:
     infos = um.device_list()
-    if not udid:
-        if len(infos) >= 2:
-            sys.exit("More than 2 devices detected")
-        if len(infos) == 0:
-            sys.exit("No device detected")
-        return infos[0].udid
-
     # Find udid exactly match
     for info in infos:
         if info.udid == udid:
             return udid
 
-    # Find udid starts-with
-    _udids = [
-        info.udid for info in infos
-        if info.udid.startswith(udid)
-    ]
+    # filter only usb connected devices
+    infos = [info for info in infos if info.conn_type == ConnectionType.USB]
+    if not udid:
+        if len(infos) >= 2:
+            sys.exit("More than 2 usb devices detected")
+        if len(infos) == 0:
+            sys.exit("No local device detected")
+        return infos[0].udid
 
-    if len(_udids) == 1:
-        return _udids[0]
+    ## Find udid starts-with
+    # _udids = [
+    #     info.udid for info in infos
+    #     if info.udid.startswith(udid)
+    # ]
 
+    # if len(_udids) == 1:
+    #     return _udids[0]
     raise RuntimeError("No matched device", udid)
 
 
@@ -127,10 +129,10 @@ def cmd_date(args: argparse.Namespace):
     d = _udid2device(args.udid)
     value = d.get_value() or {}
     timestamp = value.get("TimeIntervalSince1970")
-    if args.format:
-        print(datetime.fromtimestamp(int(timestamp)))
-    else:
+    if args.timestamp:
         print(timestamp)
+    else:
+        print(datetime.fromtimestamp(int(timestamp)))
 
 
 def cmd_version(args: argparse.Namespace):
@@ -579,7 +581,7 @@ _commands = [
     dict(action=cmd_date,
          command="date",
          flags=[
-             dict(args=['--format'],
+             dict(args=['--timestamp'],
                   action='store_true',
                   help="format timestamp")
          ],

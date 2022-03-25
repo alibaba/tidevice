@@ -97,12 +97,13 @@ class SafeStreamSocket:
         assert os.path.isfile(pemfile)
         self._dup_sock = self._sock.dup()
         
-        context = ssl.SSLContext()
-        # try:
-        #     context.set_ciphers("DEFAULT:@SECLEVEL=0") # fix md_too_weak error
-        # except ssl.SSLError:
-        #     # no ciphers can be selected.
-        #     pass
+        # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        try:
+            context.set_ciphers("ALL:@SECLEVEL=0") # fix md_too_weak error
+        except ssl.SSLError:
+            # ignore: no ciphers can be selected.
+            pass
         context.load_cert_chain(pemfile, keyfile=pemfile)
         context.check_hostname = False
         ssock = context.wrap_socket(self._sock, server_hostname="iphone.localhost")
