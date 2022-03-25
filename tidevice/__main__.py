@@ -329,6 +329,11 @@ def cmd_battery(args: argparse.Namespace):
     else:
         pprint(power_info)
 
+def cmd_crash(args: argparse.Namespace):
+    s_time = time.time()
+    d = _udid2device(args.udid)
+    d.execute_crash_commands(args.out, args.command, args.filter)
+    logger.info("Cost: {}s".format(round(time.time() - s_time), 2))
 
 def cmd_developer(args: argparse.Namespace):
     if args.download_all:
@@ -734,6 +739,20 @@ _commands = [
              dict(args=['arguments'], nargs='+', help='command arguments'),
          ],
          help="app file management"),
+    dict(action=cmd_crash,
+         command="crash",
+         flags=[
+             dict(args=['command'],
+                  choices=[
+                      'ls', 'cp', 'mv', 'del'
+                  ]),
+             dict(
+                args=['-o', '--out'],
+                default="crashes",
+                help='The output dir to save crash logs synced from device'),
+            dict(args=['-f', '--filter'], action='store_true', help="Filter system crashes")
+         ],
+         help="crash log tools"),
     dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),
     dict(action=cmd_developer,
          command="developer",

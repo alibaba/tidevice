@@ -41,6 +41,7 @@ from ._types import DeviceInfo
 from ._usbmux import Usbmux
 from ._utils import ProgressReader, get_app_dir, set_socket_timeout
 from .exceptions import *
+from ._crash import CrashManager
 
 logger = logging.getLogger(LOG.main)
 
@@ -470,6 +471,20 @@ class BaseDevice():
             "Label": PROGRAM_NAME,
         })
         return ret
+
+    def execute_crash_commands(self, output_dir, command, filter_on):
+        move_conn = self.start_service(LockdownService.CRASH_REPORT_MOVER_SERVICE)
+        copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
+
+        cm = CrashManager(move_conn, copy_conn, output_dir, filter_on)
+        if command == 'ls':
+            cm.preview()
+        elif command == 'cp':
+            cm.copy()
+        elif command == 'mv':
+            cm.move()
+        elif command == 'del':
+            cm.delete()
 
     def start_service(self, name: str) -> PlistSocket:
         try:
