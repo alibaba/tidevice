@@ -15,6 +15,7 @@ Command line tool to communicate with iOS device, support the following function
 - list installed app info
 - retrieve performance data
 - simulate run xctest, eg: WebDriverAgent
+- file operation
 - other
 
 Support platform: Mac, Linux, Windows
@@ -32,12 +33,23 @@ The extra *openssl*, contains device pair support. If can install it, try
 pip3 install -U tidevice
 ```
 
+> Windows need to install and launch iTunes
+
 ## Usage
 
 ### Show version number
 ```bash
 $ tidevice version
 0.1.0
+```
+
+### Pair
+```bash
+$ tidevice pair
+# pair device
+
+$ tidevice unpair
+# unpair device
 ```
 
 ### List connected devices
@@ -70,6 +82,10 @@ $ tidevice kill com.example.demo
 
 # show installed app list
 $ tidevice applist
+
+# show running app list
+$ tidevice ps
+$ tidevice ps --json output as json
 ```
 
 ### Run XCTest
@@ -86,7 +102,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
 # Change WDA listen port to 8200 and show debug log
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USE_PORT:8200 --debug
 ```
 
 ### Relay
@@ -169,6 +185,9 @@ $ tidevice developer
 [I 210127 11:37:52 _imagemounter:81] Pushing DeveloperDiskImage.dmg
 [I 210127 11:37:52 _imagemounter:94] Push complete
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
+
+# Download all developer image to local
+$ tidevice developer --download-all
 ```
 
 ### Check device info
@@ -222,6 +241,30 @@ com.apple.mobile.iTunes.store
 com.apple.mobile.iTunes
 ```
 
+### File operation
+```bash
+# show photo dir
+$ tidevice fsync /DCIM/
+
+# inspect files in app iMovie
+$ tidevice fsync -B com.apple.iMovie ls /Documents/
+
+# download directory (also support pull single file)
+$ tidevice pull /Documents ./TmpDocuments/
+
+# 其他操作 rm cat pull push stat tree rmtree mkdir
+$ tidevice fsync -h
+
+# Supported inspect /Documents apps
+# com.apple.iMovie iMovie
+# com.apple.mobilegarageband 库乐队
+# com.apple.clips 可立拍
+# com.t3go.passenger T3出行
+# com.dji.golite DJI Fly
+# com.duokan.reader 多看阅读
+```
+
+
 ### Other
 ```bash
 # reboot device
@@ -229,12 +272,42 @@ $ tidevice reboot
 
 $ tidevice screenshot screenshot.jpg
 
-# TODO(ssx): collect performance
-# $ tidevice perf -o fps,mem,cpu -B com.example.demo
-
 # same as idevicesyslog
 $ tidevice syslog
 ```
+
+### Performance
+How to use in command line
+
+```bash
+$ tidevice perf -B com.example.demo
+fps {'fps': 0, 'value': 0, 'timestamp': 1620725299495}
+network {'timestamp': 1620725300511, 'downFlow': 55685.94921875, 'upFlow': 2300.96484375}
+screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x500 at 0x1037CF760>, 'timestamp': 1620725301374}
+fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
+cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
+memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+```
+
+Example with python
+
+```python
+import time
+import tidevice
+
+t = tidevice.Device()
+perf = tidevice.Performance(t)
+
+
+def callback(_type: tidevice.DataType, value: dict):
+    print("R:", _type.value, value)
+
+
+perf.start("com.apple.Preferences", callback=callback)
+time.sleep(10)
+perf.stop()
+```
+
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)

@@ -6,6 +6,8 @@
 
 [English](README_EN.md)
 
+QQ交流群: _134535547_  (进群答案: ios)
+
 该工具能够用于与iOS设备进行通信, 提供以下功能
 
 - 截图
@@ -15,6 +17,7 @@
 - 列出安装应用信息
 - 模拟Xcode运行XCTest，常用的如启动WebDriverAgent测试（此方法不依赖xcodebuild)
 - 获取指定应用性能(CPU,MEM,FPS)
+- 文件操作
 - 其他
 
 支持运行在Mac，Linux，Windows上
@@ -33,12 +36,23 @@ pip3 install -U "tidevice[openssl]"   # Recommend
 pip3 install -U tidevice
 ```
 
+> Windows电脑需要安装并启动Itunes
+
 ## 使用
 
 ### 查看版本号
 ```bash
 $ tidevice version
 0.1.0
+```
+
+### 配对
+```bash
+$ tidevice pair
+# 配对设备
+
+$ tidevice unpair
+# 取消配对设备
 ```
 
 ### 列出连接设备
@@ -75,6 +89,10 @@ $ tidevice kill com.example.demo
 
 # 查看已安装应用
 $ tidevice applist
+
+# 查看运行中的应用
+$ tidevice ps
+$ tidevice ps --json output as json
 ```
 
 ### Run XCTest
@@ -92,7 +110,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
 # 修改监听端口为8200, 并显示调试日志
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USB_PORT:8200 --debug
+$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USE_PORT:8200 --debug
 ```
 
 ### Relay
@@ -126,6 +144,13 @@ $ tidevice wdaproxy -B com.facebook.wda.WebDriverAgent.Runner --port 8200
 import wda
 c = wda.Client("http://localhost:8200")
 print(c.info)
+```
+
+*Appium* 需要下面几个配置需要设置一下
+```
+"usePrebuiltWDA": "false",
+"useXctestrunFile": "false",
+"skipLogCapture": "true"
 ```
 
 需要在Windows上运行Appium+iOS自动化可以参考下面的帖子 <https://testerhome.com/topics/29230>
@@ -187,6 +212,9 @@ $ tidevice developer
 [I 210127 11:37:52 _imagemounter:81] Pushing DeveloperDiskImage.dmg
 [I 210127 11:37:52 _imagemounter:94] Push complete
 [I 210127 11:37:53 _device:589] DeveloperImage mounted successfully
+
+# 下载所有镜像到本地
+$ tidevice developer --download-all
 ```
 
 # 查看设备信息
@@ -240,6 +268,30 @@ com.apple.mobile.iTunes.store
 com.apple.mobile.iTunes
 ```
 
+### 文件操作
+```bash
+
+# 查看相册内容
+$ tidevice fsync /DCIM/
+
+# 查看T3出行Documents中的内容
+$ tidevice fsync -B com.t3go.passenger ls /Documents/
+
+# 下载目录（也支持文件）
+$ tidevice pull /Documents ./TmpDocuments/
+
+# 其他操作 rm cat pull push stat tree rmtree mkdir
+$ tidevice fsync -h
+
+# 支持查看 /Documents 的App
+# com.apple.iMovie iMovie
+# com.apple.mobilegarageband 库乐队
+# com.apple.clips 可立拍
+# com.t3go.passenger T3出行
+# com.dji.golite DJI Fly
+# com.duokan.reader 多看阅读
+```
+
 ### 其他常用
 ```bash
 # 重启
@@ -248,15 +300,50 @@ $ tidevice reboot
 # 截图
 $ tidevice screenshot screenshot.jpg
 
-# 性能采集 (TODO)
-# $ tidevice perf -o fps,mem,cpu -B com.example.demo
-
 # 输出日志 same as idevicesyslog
 $ tidevice syslog
 ```
 
+### 性能采集
+使用命令行可以直接看到结果，不过最好还是用接口获取
+
+```bash
+# 性能采集
+$ tidevice perf -B com.example.demo
+fps {'fps': 0, 'value': 0, 'timestamp': 1620725299495}
+network {'timestamp': 1620725300511, 'downFlow': 55685.94921875, 'upFlow': 2300.96484375}
+screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x500 at 0x1037CF760>, 'timestamp': 1620725301374}
+fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
+cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
+memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+```
+
+How to get app performance in python
+
+```python
+import time
+import tidevice
+from tidevice._perf import DataType
+
+t = tidevice.Device()
+perf = tidevice.Performance(t, [DataType.CPU, DataType.MEMORY, DataType.NETWORK, DataType.FPS, DataType.PAGE, DataType.SCREENSHOT, DataType.GPU])
+#  tidevice version <= 0.4.16:
+#  perf = tidevice.Performance(t)
+
+def callback(_type: tidevice.DataType, value: dict):
+    print("R:", _type.value, value)
+
+
+perf.start("com.apple.Preferences", callback=callback)
+time.sleep(10)
+perf.stop()
+```
+
+
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
+
+Python code style(ZH): https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/python_style_rules/#comments
 
 ## Alternatives
 - Go implemented: https://github.com/electricbubble/gidevice

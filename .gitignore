@@ -50,6 +50,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.vscode
+.idea
 
 # Translations
 *.mo
@@ -140,3 +142,5 @@ cython_debug/
 AUTHORS
 ChangeLog
 usbmuxd-dumpdata
+.DS_Store
+tmp/

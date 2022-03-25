@@ -16,4 +16,6 @@ colored
 packaging
 
 tornado
-simple_tornado
+simple_tornado>=0.2.2
+retry
+simplejson

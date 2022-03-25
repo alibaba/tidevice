@@ -6,18 +6,19 @@ import datetime
 import io
 import logging
 import os
+import pathlib
 import re
 import struct
 import typing
 from collections import namedtuple
-from types import SimpleNamespace
 from typing import Iterator, List, Union
 
+from . import bplist
 from . import struct2 as ct
 from ._proto import *
+from ._safe_socket import PlistSocketProperty
 from ._utils import pathjoin
-from ._safe_socket import PlistSocket
-from .exceptions import MuxError
+from .exceptions import MuxError, MuxServiceError
 
 # 00000000: 43 46 41 36 4C 50 41 41  84 00 00 00 00 00 00 00  magic(CFA6LPAA), length(0x84)
 # 00000010: 28 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  unknown(0x28), tag(0x0)
@@ -37,13 +38,19 @@ FHeader = ct.Struct("FHeader",
 logger = logging.getLogger(PROGRAM_NAME)
 
 
-class Sync(PlistSocket):
+class Sync(PlistSocketProperty):
     def prepare(self):
         self.__tag = -1
 
     def _next_tag(self):
         self.__tag += 1
         return self.__tag
+    
+    def recvall(self, size: int) -> bytearray:
+        return self.psock.recvall(size)
+    
+    def sendall(self, data: typing.Union[bytes, bytearray]) -> int:
+        return self.psock.sendall(data)
 
     def _send(self, op: AFC, data: bytes, payload: bytes = b''):
         total_len = FHeader.size + len(data) + len(payload)
@@ -72,7 +79,10 @@ class Sync(PlistSocket):
         buf = self.recvall(4)
         if buf != AFC_MAGIC[:4]:
             (plist_size, ) = struct.unpack(">I", buf)
-            self.recvall(plist_size) # Discard plist xml-content
+            status_data = self.recvall(plist_size) # Discard plist xml-content
+            status_info = bplist.loads(status_data)
+            if "Error" in status_info:
+                raise MuxServiceError(status_info["Error"])
             buf = b""
         buf = buf + self.recvall(FHeader.size - len(buf))
         fheader = FHeader.parse(buf)
@@ -101,7 +111,9 @@ class Sync(PlistSocket):
         self._send(op, data, payload)
         return self._recv()
 
-    def listdir(self, dpath: str):
+    def listdir(self, dpath: typing.Union[str, pathlib.Path]) -> typing.List[str]:
+        if isinstance(dpath, pathlib.Path):
+            dpath = dpath.as_posix()
         self._send(AFC.OP_READ_DIR, dpath.encode('utf-8'))
         pkg = self._recv()
         fnames = []
@@ -144,7 +156,7 @@ class Sync(PlistSocket):
                             self._pad00(src) + self._pad00(dst))
         return pkg.status
 
-    def stat(self, fpath: str, with_error: bool = False):
+    def stat(self, fpath: typing.Union[str, pathlib.Path], with_error: bool = False) -> StatResult:
         """
         Returns:
             if with_error False:
@@ -160,6 +172,8 @@ class Sync(PlistSocket):
             'st_mtime': '1591588092361862409',
             'st_birthtime': '1591588092361695702'}
         """
+        if isinstance(fpath, pathlib.Path):
+            fpath = fpath.as_posix()
         pkg = self._request(AFC.OP_GET_FILE_INFO, fpath.encode('utf-8'))
         if pkg.status != AFCStatus.SUCCESS:
             if with_error:
@@ -171,25 +185,25 @@ class Sync(PlistSocket):
         assert len(items) % 2 == 0
 
         result = {}
-        keys = ['st_size']
         for i in range(len(items) // 2):
             key = items[i * 2].decode('utf-8')
             val = items[i * 2 + 1].decode('utf-8')
             result[key] = val
 
+        kwargs = {}
+        kwargs['st_ifmt'] = result['st_ifmt']
+        kwargs["st_linktarget"] = result.get("LinkTarget")
         for key in ('st_size', 'st_blocks', 'st_nlink'):
             if key in result:
-                result[key] = int(result[key])
-        result['is_dir'] = result['st_ifmt'] == 'S_IFDIR'
-        result['is_link'] = result['st_ifmt'] == 'S_IFLNK'
-        result['st_mtime'] = datetime.datetime.fromtimestamp(
+                kwargs[key] = int(result[key])
+        kwargs['st_mtime'] = datetime.datetime.fromtimestamp(
             int(result['st_mtime']) / 1e9)
-        result['st_ctime'] = datetime.datetime.fromtimestamp(
+        kwargs['st_ctime'] = datetime.datetime.fromtimestamp(
             int(result.pop('st_birthtime')) / 1e9)
-        simple_ret = SimpleNamespace(**result)
+        stat_result = StatResult(**kwargs)
         if with_error:
-            return simple_ret, None
-        return simple_ret
+            return stat_result, None
+        return stat_result
 
     def rmtree(self, dpath: str) -> list:
         """ remove recursive """
@@ -226,7 +240,7 @@ class Sync(PlistSocket):
                 _last = (fname == filenames[-1])
                 fpath = dpath.rstrip("/") + "/" + fname
                 self.treeview(fpath,
-                              _prefix=_prefix + "   ",
+                              _prefix=_prefix + " ",
                               depth=depth,
                               _last=_last,
                               _depth=_depth + 1)
@@ -289,11 +303,13 @@ class Sync(PlistSocket):
         # finally:
         #     self._file_close(h)
 
-    def iter_content(self, path: str) -> Iterator[bytes]:
+    def iter_content(self, path: typing.Union[str, pathlib.Path]) -> Iterator[bytes]:
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
         info = self.stat(path)
-        if info.is_dir:
+        if info.is_dir():
             raise MuxError("{} is a directory", path)
-        if info.is_link:
+        if info.is_link():
             path = info['LinkTarget']
 
         with self._context_open(path, AFC.O_RDONLY) as fd:
@@ -307,6 +323,26 @@ class Sync(PlistSocket):
                         path, pkg.status))
                 left_size -= len(pkg.payload)
                 yield pkg.payload
+
+    def pull(self, src: typing.Union[pathlib.Path, str], dst: typing.Union[str, pathlib.Path] = "./"):
+        """ pull recursive dir and files """
+        if isinstance(src, str):
+            src = pathlib.Path(src)
+        if isinstance(dst, str):
+            dst = pathlib.Path(dst)
+
+        info = self.stat(src)
+        if info.is_dir():
+            dst.mkdir(exist_ok=True)
+            for fname in self.listdir(src):
+                self.pull(src.joinpath(fname), dst.joinpath(fname))
+        else:
+            if dst.is_dir():
+                dst = dst.joinpath(src.name)
+            logger.info("copying %s -> %s", src, dst)
+            with dst.open("wb") as f:
+                for chunk in self.iter_content(src):
+                    f.write(chunk)
 
     def pull_content(self, path: str) -> bytearray:
         buf = bytearray()

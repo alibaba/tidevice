@@ -5,9 +5,11 @@
 __all__ = [
     'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
-    "UsbmuxReplyCode", "InstrumentsService", "LOG"
+    "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult"
 ]
 
+from dataclasses import dataclass
+import datetime
 import enum
 
 
@@ -44,7 +46,7 @@ SYSMON_PROC_ATTRS = [
     "cpuUsage",
     "ctxSwitch",  # the number of context switches by process each second
     "intWakeups",  # the number of threads wakeups by process each second
-    "physFootprint",  # real memory
+    "physFootprint",  # real memory (物理内存)
     "memResidentSize",  # rss
     "memAnon",  # anonymous memory
     "pid"
@@ -207,6 +209,10 @@ MODELS = {
     "iPhone13,2": "iPhone 12",
     "iPhone13,3": "iPhone 12 Pro",
     "iPhone13,4": "iPhone 12 Pro Max",
+    "iPhone14,2": "iPhone 13 Pro",
+    "iPhone14,3": "iPhone 13 Pro Max",
+    "iPhone14,4": "iPhone 13 mini",
+    "iPhone14,5": "iPhone 13",
 
     "iPad11,1": "iPad mini (5th generation)",
     "iPad11,2": "iPad mini (5th generation)",
@@ -291,6 +297,7 @@ class LockdownService(str, enum.Enum):
 
     # Ref: https://github.com/anonymous5l/iConsole/blob/master/wifiSync.go
     MobileWirelessLockdown = "com.apple.mobile.wireless_lockdown"
+    InstallationProxy = "com.apple.mobile.installation_proxy"
 
     MobileScreenshotr = "com.apple.mobile.screenshotr"  # 截图服务
     MobileHouseArrest = "com.apple.mobile.house_arrest"  # 访问文件内的沙箱
@@ -300,6 +307,8 @@ class LockdownService(str, enum.Enum):
     InstrumentsRemoteServerSecure = "com.apple.instruments.remoteserver.DVTSecureSocketProxy"  # for iOS 14.0
     TestmanagerdLockdown = "com.apple.testmanagerd.lockdown"
     TestmanagerdLockdownSecure = "com.apple.testmanagerd.lockdown.secure"  # for iOS 14.0
+
+    
 
 
 class InstrumentsService(str, enum.Enum):
@@ -322,6 +331,25 @@ class UsbmuxReplyCode(int, enum.Enum):
     BadDevice = 2
     ConnectionRefused = 3
     BadVersion = 6
+
+
+@dataclass
+class StatResult:
+    st_ifmt: str
+    st_size: int
+    st_blocks: int
+    st_nlink: int
+    st_ctime: datetime.datetime
+    st_mtime: datetime.datetime
+    st_linktarget: str = None
+
+    def is_dir(self) -> bool:
+        return self.st_ifmt == "S_IFDIR"
+    
+    def is_link(self) -> bool:
+        return self.st_ifmt == "S_IFLNK"
+
+
 
 
 if __name__ == "__main__":

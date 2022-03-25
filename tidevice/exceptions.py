@@ -1,11 +1,21 @@
 # coding: utf-8
 # codeskyblue 2020/06/03
-# 
+#
+
+__all__ = [
+    'MuxError', 'MuxReplyError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
+    'IPAError'
+]
 
 from ._proto import UsbmuxReplyCode
 
+
 class MuxError(Exception):
     """ Mutex error """
+    pass
+
+
+class IPAError(Exception):
     pass
 
 
@@ -19,13 +29,9 @@ class MuxVersionError(MuxError):
     pass
 
 
-class MuxServiceError(MuxError):
-    pass
-
-
 class ServiceError(MuxError):
     pass
 
 
-class IPAError(Exception):
+class MuxServiceError(ServiceError):
     pass

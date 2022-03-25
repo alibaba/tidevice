@@ -9,11 +9,10 @@ import fnmatch
 import io
 import logging
 import os
-import pprint
+import pathlib
 import re
 import shutil
 import ssl
-import subprocess
 import sys
 import tempfile
 import threading
@@ -21,16 +20,16 @@ import time
 import typing
 import uuid
 import zipfile
-from collections import namedtuple
-from typing import Iterator, Optional, Tuple, Union
+from typing import Iterator, Optional, Union
 
 import requests
 from cached_property import cached_property
 from logzero import setup_logger
 from PIL import Image
+from retry import retry
 
 from . import bplist
-from ._imagemounter import ImageMounter
+from ._imagemounter import ImageMounter, cache_developer_image
 from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
                            ServiceInstruments)
@@ -38,22 +37,25 @@ from ._ipautil import IPAReader
 from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
+from ._types import DeviceInfo
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir
+from ._utils import ProgressReader, get_app_dir, set_socket_timeout
 from .exceptions import *
-
 
 logger = logging.getLogger(LOG.main)
 
 
-def pil_imread(data: Union[str, bytes, bytearray]) -> Image.Image:
-    """ Convert data to PIL.Image.Image """
+def pil_imread(data: Union[str, pathlib.Path, bytes, bytearray]) -> Image.Image:
+    """ Convert data(path, binary) to PIL.Image.Image
+    
+    Raises:
+        TypeError
+    """
     if isinstance(data, (bytes, bytearray)):
         memory_fd = io.BytesIO(data)
         im = Image.open(memory_fd)
         im.load()
         del (memory_fd)
-        del (data)
         return im
     elif isinstance(data, str):
         return Image.open(data)
@@ -83,34 +85,37 @@ class BaseDevice():
             self._usbmux = usbmux
 
         self._udid = udid
-        self._info = self.info
+        self._info: DeviceInfo = self.info
         self._lock = threading.Lock()
         self._pair_record = None
+
+    @property
+    def debug(self) -> bool:
+        return logging.getLogger(LOG.main).level == logging.DEBUG
+    
+    @debug.setter
+    def debug(self, v: bool):
+        # log setup
+        setup_logger(LOG.main,
+            level=logging.DEBUG if v else logging.INFO)
 
     @property
     def usbmux(self) -> Usbmux:
         return self._usbmux
 
     @cached_property
-    def info(self) -> dict:
-        """
-        Example return:
-        {
-            "SerialNumber": "xxxx", # udid
-            "DeviceID": 12,
-        }
-        """
+    def info(self) -> DeviceInfo:
         devices = self._usbmux.device_list()
         if not self._udid:
             assert len(
                 devices
             ) == 1, "Device is not present or multi devices connected"
             _d = devices[0]
-            self._udid = _d['SerialNumber']
+            self._udid = _d.udid
             return _d
         else:
             for d in devices:
-                if d['SerialNumber'] == self._udid:
+                if d.udid == self._udid:
                     return d
         raise MuxError("Device: {} not ready".format(self._udid))
 
@@ -123,7 +128,7 @@ class BaseDevice():
     
     @property
     def devid(self) -> int:
-        return self._info['DeviceID']
+        return self._info.device_id
 
     @property
     def pair_record(self) -> dict:
@@ -190,9 +195,9 @@ class BaseDevice():
         try:
             from ._ssl import make_certs_and_key
         except ImportError:
-            print("DevicePair require pyOpenSSL and pyans1, install by the following command")
-            print("\tpip3 install pyOpenSSL pyasn1", flush=True)
-            raise RuntimeError("Missing lib")
+            #print("DevicePair require pyOpenSSL and pyans1, install by the following command")
+            #print("\tpip3 install pyOpenSSL pyasn1", flush=True)
+            raise RuntimeError("DevicePair required lib, fix with: pip3 install pyOpenSSL pyasn1")
 
         cert_pem, priv_key_pem, dev_cert_pem = make_certs_and_key(device_public_key)
         pair_record = {
@@ -269,6 +274,7 @@ class BaseDevice():
     def _system_BUID(self):
         return self.pair_record['SystemBUID']
 
+    @retry(OSError, tries=2, delay=3, logger=logger)
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
@@ -280,18 +286,20 @@ class BaseDevice():
         #              hex(_port), _port)
         del (port)
 
-        device_id = self.info['DeviceID']
+        device_id = self.info.device_id
         conn = self._usbmux.create_connection()
         payload = {
+            # 'BundleID': 'com.apple.iTunes',
             'DeviceID': device_id,  # Required
             'MessageType': 'Connect',  # Required
             'PortNumber': _port,  # Required
             'ProgName': PROGRAM_NAME,
         }
         logger.debug("Send payload: %s", payload)
-        data = conn.send_recv_packet(payload)
-        logger.debug("connect port: %d", _port)
+        with set_socket_timeout(conn.get_socket(), 5.0):
+            data = conn.send_recv_packet(payload)
         self._usbmux._check(data)
+        logger.debug("connected to port: %d", _port)
 
         if _ssl:
             conn.switch_to_ssl(self.ssl_pemfile_path)
@@ -358,15 +366,6 @@ class BaseDevice():
             domain: can be found in "ideviceinfo -h", eg: com.apple.disk_usage
         """
         return self.get_value(domain=domain)
-        # with self.create_session() as conn:
-        #     packet = {
-        #         "Request": "GetValue",
-        #         "Label": PROGRAM_NAME,
-        #     }
-        #     if domain:
-        #         packet["Domain"] = domain
-        #     ret = conn.send_recv_packet(packet)
-        #     return ret['Value']
 
     def get_value(self, key: str = '', domain: str = "", no_session: bool = False):
         """ key can be: ProductVersion
@@ -391,6 +390,29 @@ class BaseDevice():
             with self.create_session() as conn:
                 ret = conn.send_recv_packet(request)
                 return ret['Value']
+    
+    def set_value(self, domain: str, key: str, value: typing.Any):
+        request = {
+            "Domain": domain,
+            "Key": key,
+            "Label": "oa",
+            "Request": "SetValue",
+            "Value": value
+        }
+        with self.create_session() as s:
+            ret = s.send_recv_packet(request)
+            error = ret.get("Error")
+            if error:
+                raise ServiceError(error)
+
+    def set_assistive_touch(self, enabled: bool):
+        """
+        show or close screen assitive touch button
+
+        Raises:
+            ServiceError
+        """
+        self.set_value("com.apple.Accessibility", "AssistiveTouchEnabledByiTunes", enabled)
 
     def screen_info(self) -> tuple:
         info = self.device_info("com.apple.mobile.iTunes")
@@ -488,6 +510,7 @@ class BaseDevice():
 
     def iter_screenshot(self) -> Iterator[Image.Image]:
         """ take screenshot infinite """
+        
         with self.start_service(LockdownService.MobileScreenshotr) as conn:
             version_exchange = conn.recv_packet()
             # Expect recv: ['DLMessageVersionExchange', 300, 0]
@@ -511,23 +534,24 @@ class BaseDevice():
                 assert data[1]['MessageType'] == "ScreenShotReply"
 
                 png_data = data[1]['ScreenShotData']
+
                 yield pil_imread(png_data)
 
     @property
     def name(self):
-        with self.create_inner_connection() as s:
-            data = s.send_recv_packet({
-                'Request': 'GetValue',
-                'Key': 'DeviceName',
-                'Label': PROGRAM_NAME,
-            })
-            return data['Value']
+        return self.get_value("DeviceName", no_session=True)
+    
+    @property
+    def product_version(self) -> str:
+        return self.get_value("ProductVersion", no_session=True)
 
-    def app_sync(self, bundle_id: str) -> Sync:
-        # 'com.facebook.WebDriverAgentRunner.xctrunner'
+    def app_sync(self, bundle_id: str, command: str = "VendDocuments") -> Sync:
+        # Change command(VendContainer -> VendDocuments)
+        # According to https://github.com/GNOME/gvfs/commit/b8ad223b1e2fbe0aec24baeec224a76d91f4ca2f
+        # Ref: https://github.com/libimobiledevice/libimobiledevice/issues/193
         conn = self.start_service(LockdownService.MobileHouseArrest)
         conn.send_packet({
-            "Command": "VendContainer",
+            "Command": command,
             "Identifier": bundle_id,
         })
         return Sync(conn)
@@ -546,23 +570,6 @@ class BaseDevice():
         conn = self._unsafe_start_service(ImageMounter.SERVICE_NAME)
         return ImageMounter(conn)
 
-    def _urlretrieve(self, url, local_filename):
-        """ download url to local """
-        logger.info("Download %s -> %s", url, local_filename)
-
-        try:
-            tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
-            with requests.get(url, stream=True) as r:
-                r.raise_for_status()
-                with open(tmp_local_filename, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f, length=16<<20)
-                    f.flush()
-                os.rename(tmp_local_filename, local_filename)
-                logger.info("%r download successfully", local_filename)
-        finally:
-            if os.path.isfile(tmp_local_filename):
-                os.remove(tmp_local_filename)
-        
     @contextlib.contextmanager
     def _request_developer_image_dir(self):
         # use local path first
@@ -577,44 +584,32 @@ class BaseDevice():
         image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
         signature_path = image_path + ".signature"
         if os.path.isfile(image_path) and os.path.isfile(signature_path):
-            # yield image_path, signature_path
             yield mac_developer_dir
         else:
-            # $HOME/.tidevice/device-support/12.2.zip
-            local_device_support = get_app_dir("device-support")
-            image_zip_path = os.path.join(local_device_support, version+".zip")
-            if not os.path.isfile(image_zip_path):
-                # https://github.com/iGhibli/iOS-DeviceSupport
-                # https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/10.0.zip
-                _alias = {
-                    "12.2": "12.2 (16E5212e).zip",
-                    "12.4": "12.4 (FromXcode_11_Beta_7_xip).zip",
-                    "12.5": "12.4 (FromXcode_11_Beta_7_xip).zip", # 12.5 can work on 12.4
-                    "13.6": "13.6(FromXcode_12_beta_4_xip).zip",
-                    "13.7": "13.7 (17H35).zip",
-                    "14.0": "14.0(FromXcode_12_beta_6_xip).zip",
-                    "14.1": "14.1(FromXcode12.1(12A7403)).zip",
-                    "14.2": "14.2(FromXcode_12.3_beta_xip).zip",
-                    "14.3": "14.3(FromXcode_12.3_beta_xip).zip",
-                    "14.4": "14.4(FromXcode_12.4(12D4e)).zip",
-                    "14.5": "14.5(FromXcode_12.5_beta_3_xip).zip",
-                }
-                zip_name = _alias.get(version, f"{version}.zip")
-                origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
-                mirror_url = f"https://tool.appetizer.io/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
-                # logger.info("Download %s -> %s", download_url, image_zip_path)
-                try:
-                    self._urlretrieve(mirror_url, image_zip_path)
-                except requests.HTTPError:
-                    logger.debug("mirror download failed, change to original url")
-                    # this might be slower
-                    self._urlretrieve(origin_url, image_zip_path)
-                
+            image_zip_path = cache_developer_image(version)
             with tempfile.TemporaryDirectory() as tmpdir:
                 zf = zipfile.ZipFile(image_zip_path)
                 zf.extractall(tmpdir)
-                yield os.path.join(tmpdir, os.listdir(tmpdir)[0])
+                rootfiles = os.listdir(tmpdir)
+                
+                rootdirs = []
+                for fname in rootfiles:
+                    if fname.startswith("_") or fname.startswith("."):
+                        continue
+                    if os.path.isdir(os.path.join(tmpdir, fname)):
+                        rootdirs.append(fname)
 
+                if len(rootfiles) == 0: # empty zip
+                    raise RuntimeError("deviceSupport zip file is empty")
+                elif os.path.isfile(os.path.join(tmpdir, "DeveloperDiskImage.dmg")):
+                    yield tmpdir
+                elif version in rootdirs: # contains directory: {version}
+                    yield os.path.join(tmpdir, version)
+                elif len(rootdirs) == 1: # only contain one directory
+                    yield os.path.join(tmpdir, rootdirs[0])
+                else:
+                    raise RuntimeError("deviceSupport for {} not detected DeveloperDiskImage".format(version))
+                
     def _test_if_developer_mounted(self) -> bool:
         try:
             with self.create_session():
@@ -686,7 +681,7 @@ class BaseDevice():
                                            args=args,
                                            kill_running=kill_running)
 
-    def app_install(self, file_or_url: Union[str, typing.IO]):
+    def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
         """
         Args:
             file_or_url: local path or url
@@ -695,7 +690,7 @@ class BaseDevice():
             bundle_id
 
         Raises:
-            ServiceError
+            ServiceError, IOError
 
         # Copying 'WebDriverAgentRunner-Runner-resign.ipa' to device... DONE.
         # Installing 'com.facebook.WebDriverAgentRunner.xctrunner'
@@ -714,84 +709,54 @@ class BaseDevice():
         #  - Complete
         """
         is_url = bool(re.match(r"^https?://", file_or_url))
-        with tempfile.TemporaryDirectory() as tmpdir:
-            if is_url:
-                url = file_or_url
-                filepath = os.path.join(tmpdir, "_tmp.ipa")
-                logger.info("Download to tmp path: %s", filepath)
-                with requests.get(url, stream=True) as r:
-                    filesize = int(r.headers.get("content-length"))
-                    preader = ProgressReader(r.raw, filesize)
-                    with open(filepath, "wb") as f:
-                        shutil.copyfileobj(preader, f)
-                    preader.finish()
-            elif os.path.isfile(file_or_url):
-                filepath = file_or_url
-            else:
-                raise RuntimeError(
-                    "Local path {} not exist".format(file_or_url))
+        if is_url:
+            url = file_or_url
+            tmpdir = tempfile.TemporaryDirectory()
+            filepath = os.path.join(tmpdir.name, "_tmp.ipa")
+            logger.info("Download to tmp path: %s", filepath)
+            with requests.get(url, stream=True) as r:
+                filesize = int(r.headers.get("content-length"))
+                preader = ProgressReader(r.raw, filesize)
+                with open(filepath, "wb") as f:
+                    shutil.copyfileobj(preader, f)
+                preader.finish()
+        elif os.path.isfile(file_or_url):
+            filepath = file_or_url
+        else:
+            raise IOError(
+                "Local path {} not exist".format(file_or_url))
 
-            conn = self.start_service(LockdownService.AFC)
-            afc = Sync(conn)
+        ir = IPAReader(filepath)
+        bundle_id = ir.get_bundle_id()
+        short_version = ir.get_short_version()
+        ir.close()
 
-            ipa_tmp_dir = "PublicStaging"
-            if not afc.exists(ipa_tmp_dir):
-                afc.mkdir(ipa_tmp_dir)
-            ir = IPAReader(filepath)
-            bundle_id = ir.get_bundle_id()
-            ir.close()
+        conn = self.start_service(LockdownService.AFC)
+        afc = Sync(conn)
 
-            print("Copying {!r} to device...".format(filepath), end=" ")
-            sys.stdout.flush()
-            target_path = ipa_tmp_dir + "/" + bundle_id + ".ipa"
+        ipa_tmp_dir = "PublicStaging"
+        if not afc.exists(ipa_tmp_dir):
+            afc.mkdir(ipa_tmp_dir)
 
-            filesize = os.path.getsize(filepath)
-            with open(filepath, 'rb') as f:
-                preader = ProgressReader(f, filesize)
-                afc.push_content(target_path, preader)
-            preader.finish()
-            print("DONE.")
+        print("Copying {!r} to device...".format(filepath), end=" ")
+        sys.stdout.flush()
+        target_path = ipa_tmp_dir + "/" + bundle_id + ".ipa"
 
-            print("Installing {!r}".format(bundle_id))
-            inst = self.installation
-            inst.send_packet({
-                'Command': 'Install',
-                'ClientOptions': {
-                    'CFBundleIdentifier': bundle_id,
-                },
-                'PackagePath': target_path
-            })
-            while True:
-                progress = inst.recv_packet()
-                if progress.get("Status") == 'Complete':
-                    print("Complete")
-                    return bundle_id
-                if 'Error' in progress:
-                    logger.error("%s", progress['Error'])
-                    logger.error("%s", progress.get("ErrorDescription"))
-                    raise ServiceError(progress['Error'])
-                print("- {Status} ({PercentComplete}%)".format(**progress))
+        filesize = os.path.getsize(filepath)
+        with open(filepath, 'rb') as f:
+            preader = ProgressReader(f, filesize)
+            afc.push_content(target_path, preader)
+        preader.finish()
+        print("DONE.")
+
+        print("Installing {!r} {!r}".format(bundle_id, short_version))
+        self.installation.install(bundle_id, target_path)
 
     def app_uninstall(self, bundle_id: str) -> bool:
         """
         Note: It seems always return True
         """
-        ins = self.installation
-        ins.send_packet({
-            "Command": "Uninstall",
-            "ApplicationIdentifier": bundle_id
-        })
-        print("Uninstalling {!r}".format(bundle_id))
-        while True:
-            data = ins.recv_packet()
-            if data.get("Status") == 'Complete':
-                print("Complete")
-                return True
-            if 'Error' in data:
-                logger.error("%s", data['Error'])
-                logger.error("%s", data.get("ErrorDescription"))
-                return False
-            print("- {Status} ({PercentComplete}%)".format(**data))
+        return self.installation.uninstall(bundle_id)
 
     def _connect_testmanagerd_lockdown(self):
         if self.major_version() >= 14:
@@ -814,7 +779,7 @@ class BaseDevice():
             if isinstance(conn._sock, ssl.SSLSocket):
                 conn._sock = conn._dup_sock
         return ServiceInstruments(conn)
-
+    
     @property
     def instruments(self) -> ServiceInstruments:
         return self.connect_instruments()
@@ -848,7 +813,7 @@ class BaseDevice():
             "targetApplicationBundleID": target_app_bundle_id,
         }))  # yapf: disable
 
-        fsync = self.app_sync(bundle_id)
+        fsync = self.app_sync(bundle_id, command="VendContainer")
         for fname in fsync.listdir("/tmp"):
             if fname.endswith(".xctestconfiguration"):
                 logger.debug("remove /tmp/%s", fname)
@@ -975,7 +940,7 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, fuzzy_bundle_id="com.facebook.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
+    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
 
@@ -988,6 +953,9 @@ class BaseDevice():
         
         bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
+
+        product_version = self.get_value("ProductVersion")
+        logger.info("ProductVersion: %s", product_version)
 
         logger.info("DeviceIdentifier: %s", self.udid)
 
@@ -1081,11 +1049,8 @@ class BaseDevice():
         # result = x1.call_message(chan, identifier, aux)
         # logger.debug("result: %s", result)
 
-        # index: 1558
-        product_version = self.get_value("ProductVersion")
-        logger.info("ProductVersion: %s", product_version)
-        # return int(version.split(".")[0]) >= 12
-
+        # after app launched, operation bellow must be send in 0.1s
+        # or wda will launch failed
         if self.major_version() >= 12:
             identifier = '_IDE_authorizeTestSessionWithProcessID:'
             aux = AUXMessageBuffer()

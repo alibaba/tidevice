@@ -3,17 +3,16 @@
 #
 
 import re
+import shutil
 import sys
 import tempfile
-import shutil
 import typing
 import zipfile
-from typing import Union
-from cached_property import cached_property
 from pprint import pprint
+from typing import Union
 
-from . import bplist
-from . import plistlib2
+from . import bplist, plistlib2
+from ._compat import cache
 from .exceptions import IPAError
 
 
@@ -51,6 +50,7 @@ class IPAReader(zipfile.ZipFile):
         else:
             raise IPAError('unable to parse embedded.mobileprovision file')
 
+    @cache
     def get_infoplist(self) -> dict:
         finfo = self.get_infoplist_zipinfo()
         with self.open(finfo, 'r') as fp:
@@ -65,13 +65,17 @@ class IPAReader(zipfile.ZipFile):
     def get_bundle_id(self) -> str:
         """ return CFBundleIdentifier """
         return self.get_infoplist()['CFBundleIdentifier']
+    
+    def get_short_version(self) -> str:
+        return self.get_infoplist().get('CFBundleShortVersionString', "")
 
-    def dump_info(self):
+    def dump_info(self, all: bool = False):
         data = self.get_infoplist()
         print("BundleID:", data['CFBundleIdentifier'])
         print("ShortVersion:", data['CFBundleShortVersionString'])
-        #m = self.get_mobileprovision()
-        #pprint(m['ProvisionedDevices'])
+        if all:
+            m = self.get_mobileprovision()
+            pprint(m['ProvisionedDevices'])
 
 
 def parse_bundle_id(fpath: str) -> str:
