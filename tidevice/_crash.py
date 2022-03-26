@@ -4,6 +4,7 @@ from genericpath import isdir
 from ._sync import Sync
 import logging
 from ._proto import LOG
+from ._safe_socket import PlistSocket
 
 
 logger = logging.getLogger(LOG.main)
@@ -11,9 +12,9 @@ logger = logging.getLogger(LOG.main)
 # Ref: https://github.com/libimobiledevice/libimobiledevice/blob/master/tools/idevicecrashreport.c
 
 class CrashManager(object):
-    def __init__(self, move_conn, copy_conn, output_dir):
+    def __init__(self, move_conn: PlistSocket, copy_conn: PlistSocket, output_dir: str):
         self._afc = None
-        self._move_coon = move_conn
+        self._move_conn = move_conn
         self._copy_conn = copy_conn
         self._output_dir = output_dir
         
@@ -22,7 +23,7 @@ class CrashManager(object):
     
     def _flush(self):
         ack = b'ping\x00'
-        assert ack == self._move_coon.recvall(len(ack))
+        assert ack == self._move_conn.recvall(len(ack))
 
     def preview(self):
         logger.info("List of crash logs:")
@@ -41,21 +42,6 @@ class CrashManager(object):
         self._afc.rmtree("/")
         logger.info("Crash file moved to '{}' from device".format(self._output_dir))
 
-    def delete(self):
-        self._remove_file("/")
+    def remove(self):
+        self._afc.rmtree("/")
         logger.info("Crash file purged from device")
-
-    def _remove_file(self, dir_path):
-        files = self._afc.listdir(dir_path)
-        for file in files:
-            if dir_path == "/":
-                file = "/{}".format(file)
-            else:
-                file = "{}/{}".format(dir_path, file)
-            file_st = self._afc.stat(file)
-            
-            if file_st.is_dir():
-                self._remove_file(file)
-            else:
-                self._afc.remove(file)
-        self._afc.rmdir(dir_path)

@@ -744,7 +744,7 @@ _commands = [
          flags=[
              dict(args=['command'],
                   choices=[
-                      'ls', 'cp', 'mv', 'del'
+                      'ls', 'cp', 'mv', 'rm'
                   ]),
              dict(
                 args=['-o', '--out'],

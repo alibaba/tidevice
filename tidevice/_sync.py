@@ -211,9 +211,10 @@ class Sync(PlistSocketProperty):
         if info.is_dir:
             rmfiles = []
             for fname in self.listdir(dpath):
-                fpath = dpath.rstrip("/") + "/" + fname
-                files = self.rmtree(fpath)
-                rmfiles.extend(files)
+                if (fname != ""):
+                    fpath = dpath.rstrip("/") + "/" + fname
+                    files = self.rmtree(fpath)
+                    rmfiles.extend(files)
             rmfiles.append(dpath + "/")
             self.rmdir(dpath)
             return rmfiles

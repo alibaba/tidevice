@@ -483,8 +483,8 @@ class BaseDevice():
             cm.copy()
         elif command == 'mv':
             cm.move()
-        elif command == 'del':
-            cm.delete()
+        elif command == 'rm':
+            cm.remove()
 
     def start_service(self, name: str) -> PlistSocket:
         try:
