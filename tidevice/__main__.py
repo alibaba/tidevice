@@ -334,11 +334,18 @@ def cmd_battery(args: argparse.Namespace):
     else:
         pprint(power_info)
 
-def cmd_crash(args: argparse.Namespace):
-    s_time = time.time()
+def cmd_crashreport(args: argparse.Namespace):
     d = _udid2device(args.udid)
-    d.execute_crash_commands(args.out, args.command)
-    logger.info("Cost: {}s".format(round(time.time() - s_time), 2))
+    cm = d.get_crashmanager()
+    if args.list:
+        cm.preview()
+        return
+    if args.clear:
+        cm.remove_all()
+        return
+    remove: bool = not args.keep
+    cm.afc.pull("/", args.output_directory, remove=remove)
+    logger.info("Done")
 
 def cmd_developer(args: argparse.Namespace):
     if args.download_all:
@@ -395,7 +402,6 @@ def cmd_wdaproxy(args: argparse.Namespace):
 def cmd_syslog(args: argparse.Namespace):
     d = _udid2device(args.udid)
     s = d.start_service("com.apple.syslog_relay")
-    # print("SS")
     try:
         while True:
             text = s.recv().decode('utf-8')
@@ -744,18 +750,13 @@ _commands = [
              dict(args=['arguments'], nargs='+', help='command arguments'),
          ],
          help="app file management"),
-    dict(action=cmd_crash,
-         command="crash",
+    dict(action=cmd_crashreport,
+         command="crashreport",
          flags=[
-             dict(args=['command'],
-                  choices=[
-                      'ls', 'cp', 'mv', 'rm'
-                  ]),
-             dict(
-                args=['-o', '--out'],
-                default="crashes",
-                help='The output dir to save crash logs synced from device'),
-            dict(args=['-f', '--filter'], action='store_true', help="Filter system crashes")
+             dict(args=['--list'], action='store_true', help='list all crash files'),
+             dict(args=['--keep'], action='store_true', help="copy but do not remove crash reports from device"),
+             dict(args=['--clear'], action='store_true', help='clear crash files'),
+             dict(args=['output_directory'], nargs="?", help='The output dir to save crash logs synced from device'),
          ],
          help="crash log tools"),
     dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),

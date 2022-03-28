@@ -268,22 +268,16 @@ $ tidevice fsync -h
 
 ### Crash log operation
 ```bash
+usage: tidevice crashreport [-h] [--list] [--keep] [--clear] [output_directory]
 
-# List crash log files on device
-$ tidevice crash ls
+positional arguments:
+  output_directory  The output dir to save crash logs synced from device (default: None)
 
-# Copy crash log files from device, default output dir: crashes
-$ tidevice crash cp
-
-# Copy crash log files from device, with custom output dir
-$ tidevice crash cp -O myOutputDir
-
-# Move crash log files from device, default output dir: crashes
-$ tidevice crash mv
-
-# Remove crash log files on device
-$ tidevice crash rm
-
+optional arguments:
+  -h, --help        show this help message and exit
+  --list            list all crash files (default: False)
+  --keep            copy but do not remove crash reports from device (default: False)
+  --clear           clear crash files (default: False)
 ```
 
 ### Other

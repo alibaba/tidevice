@@ -295,22 +295,16 @@ $ tidevice fsync -h
 
 ### Crash日志操作
 ```bash
+usage: tidevice crashreport [-h] [--list] [--keep] [--clear] [output_directory]
 
-# 查看Crash日志列表
-$ tidevice crash ls
+positional arguments:
+  output_directory  The output dir to save crash logs synced from device (default: None)
 
-# 复制Crash日志文件，默认输出到crashes文件夹
-$ tidevice crash cp
-
-# 复制Crash日志文件，自定义输出目录
-$ tidevice crash cp -O myOutputDir
-
-# 移动Crash日志文件，默认输出到crashes文件夹。可自定义位置
-$ tidevice crash mv
-
-# 清空设备端的Crash日志
-$ tidevice crash rm
-
+optional arguments:
+  -h, --help        show this help message and exit
+  --list            list all crash files (default: False)
+  --keep            copy but do not remove crash reports from device (default: False)
+  --clear           clear crash files (default: False)
 ```
 
 ### 其他常用

@@ -11,37 +11,21 @@ logger = logging.getLogger(LOG.main)
 
 # Ref: https://github.com/libimobiledevice/libimobiledevice/blob/master/tools/idevicecrashreport.c
 
-class CrashManager(object):
-    def __init__(self, move_conn: PlistSocket, copy_conn: PlistSocket, output_dir: str):
-        self._afc = None
-        self._move_conn = move_conn
-        self._copy_conn = copy_conn
-        self._output_dir = output_dir
-        
-        self._flush()
-        self._afc = Sync(self._copy_conn)
+class CrashManager:
+    def __init__(self, copy_conn: PlistSocket):
+        self._afc = Sync(copy_conn)
     
-    def _flush(self):
-        ack = b'ping\x00'
-        assert ack == self._move_conn.recvall(len(ack))
+    @property
+    def afc(self) -> Sync:
+        return self._afc
 
     def preview(self):
-        logger.info("List of crash logs:")
-        r = self._afc.listdir("/")
-        if str(r) != "['']":
-            self._afc.treeview("/")
+        logger.info("List of crash logs")
+        if self.afc.listdir("/"):
+            self.afc.treeview("/")
         else:
-            logger.info("No crash logs found")
+            logger.info("No crashes")
 
-    def copy(self):
-        self._afc.pull("/", self._output_dir)
-        logger.info("Crash file copied to '{}' from device".format(self._output_dir))
-
-    def move(self):
-        self._afc.pull("/", self._output_dir)
-        self._afc.rmtree("/")
-        logger.info("Crash file moved to '{}' from device".format(self._output_dir))
-
-    def remove(self):
+    def remove_all(self):
         self._afc.rmtree("/")
         logger.info("Crash file purged from device")
