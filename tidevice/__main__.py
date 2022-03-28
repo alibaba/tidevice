@@ -44,6 +44,11 @@ def _complete_udid(udid: Optional[str] = None) -> str:
     for info in infos:
         if info.udid == udid:
             return udid
+    if udid:
+        sys.exit("Device for %s not detected" % udid)
+
+    if len(infos) == 1:
+        return infos[0].udid
 
     # filter only usb connected devices
     infos = [info for info in infos if info.conn_type == ConnectionType.USB]
