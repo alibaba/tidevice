@@ -211,7 +211,7 @@ class Sync(PlistSocketProperty):
             return stat_result, None
         return stat_result
 
-    def rmtree(self, dpath: typing.Union[str, pathlib.Path]) -> list:
+    def rmtree(self, dpath: typing.Union[str, pathlib.Path]) -> typing.List[str]:
         """ remove recursive """
         if isinstance(dpath, pathlib.Path):
             dpath = dpath.as_posix()
@@ -319,11 +319,10 @@ class Sync(PlistSocketProperty):
     @contextlib.contextmanager
     def _context_open(self, path, open_mode):
         h = self._file_open(path, open_mode)
-        yield h
-        self._file_close(h)
-        # try:
-        # finally:
-        #     self._file_close(h)
+        try:
+            yield h
+        finally:
+            self._file_close(h)
 
     def iter_content(self, path: typing.Union[str, pathlib.Path]) -> Iterator[bytes]:
         if isinstance(path, pathlib.Path):
@@ -360,8 +359,7 @@ class Sync(PlistSocketProperty):
         if isinstance(dst, str):
             dst = pathlib.Path(dst)
 
-        info = self.stat(src)
-        if info.is_dir():
+        if src.as_posix() == "/" or self.stat(src).is_dir():
             dst.mkdir(exist_ok=True)
             for fname in self.listdir(src):
                 self.pull(src.joinpath(fname), dst.joinpath(fname))
@@ -373,7 +371,10 @@ class Sync(PlistSocketProperty):
                 for chunk in self.iter_content(src):
                     f.write(chunk)
         if remove:
-            self.rmtree(src)
+            try:
+                self.rmtree(src)
+            except:
+                pass
 
     def pull_content(self, path: str) -> bytearray:
         buf = bytearray()
