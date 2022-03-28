@@ -18,6 +18,7 @@ QQ交流群: _134535547_  (进群答案: ios)
 - 模拟Xcode运行XCTest，常用的如启动WebDriverAgent测试（此方法不依赖xcodebuild)
 - 获取指定应用性能(CPU,MEM,FPS)
 - 文件操作
+- Crash日志操作
 - 其他
 
 支持运行在Mac，Linux，Windows上
@@ -290,6 +291,20 @@ $ tidevice fsync -h
 # com.t3go.passenger T3出行
 # com.dji.golite DJI Fly
 # com.duokan.reader 多看阅读
+```
+
+### Crash日志操作
+```bash
+usage: tidevice crashreport [-h] [--list] [--keep] [--clear] [output_directory]
+
+positional arguments:
+  output_directory  The output dir to save crash logs synced from device (default: None)
+
+optional arguments:
+  -h, --help        show this help message and exit
+  --list            list all crash files (default: False)
+  --keep            copy but do not remove crash reports from device (default: False)
+  --clear           clear crash files (default: False)
 ```
 
 ### 其他常用

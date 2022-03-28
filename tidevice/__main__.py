@@ -334,6 +334,18 @@ def cmd_battery(args: argparse.Namespace):
     else:
         pprint(power_info)
 
+def cmd_crashreport(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    cm = d.get_crashmanager()
+    if args.list:
+        cm.preview()
+        return
+    if args.clear:
+        cm.remove_all()
+        return
+    remove: bool = not args.keep
+    cm.afc.pull("/", args.output_directory, remove=remove)
+    logger.info("Done")
 
 def cmd_developer(args: argparse.Namespace):
     if args.download_all:
@@ -390,7 +402,6 @@ def cmd_wdaproxy(args: argparse.Namespace):
 def cmd_syslog(args: argparse.Namespace):
     d = _udid2device(args.udid)
     s = d.start_service("com.apple.syslog_relay")
-    # print("SS")
     try:
         while True:
             text = s.recv().decode('utf-8')
@@ -739,6 +750,15 @@ _commands = [
              dict(args=['arguments'], nargs='+', help='command arguments'),
          ],
          help="app file management"),
+    dict(action=cmd_crashreport,
+         command="crashreport",
+         flags=[
+             dict(args=['--list'], action='store_true', help='list all crash files'),
+             dict(args=['--keep'], action='store_true', help="copy but do not remove crash reports from device"),
+             dict(args=['--clear'], action='store_true', help='clear crash files'),
+             dict(args=['output_directory'], nargs="?", help='The output dir to save crash logs synced from device'),
+         ],
+         help="crash log tools"),
     dict(action=cmd_dump_fps, command='dumpfps', help='dump fps'),
     dict(action=cmd_developer,
          command="developer",

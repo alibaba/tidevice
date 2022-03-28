@@ -294,6 +294,9 @@ class LockdownService(str, enum.Enum):
     # hdiutil mount /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/14.0/DeveloperDiskImage.dmg
     # tree /Volumes/DeveloperDiskImage/Library/Lockdown
     MobileLockdown = 'com.apple.mobile.lockdown'
+    
+    CRASH_REPORT_MOVER_SERVICE = "com.apple.crashreportmover"
+    CRASH_REPORT_COPY_MOBILE_SERVICE = "com.apple.crashreportcopymobile"
 
     # Ref: https://github.com/anonymous5l/iConsole/blob/master/wifiSync.go
     MobileWirelessLockdown = "com.apple.mobile.wireless_lockdown"

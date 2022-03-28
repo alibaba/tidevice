@@ -16,6 +16,7 @@ Command line tool to communicate with iOS device, support the following function
 - retrieve performance data
 - simulate run xctest, eg: WebDriverAgent
 - file operation
+- crash log operation
 - other
 
 Support platform: Mac, Linux, Windows
@@ -264,6 +265,20 @@ $ tidevice fsync -h
 # com.duokan.reader 多看阅读
 ```
 
+
+### Crash log operation
+```bash
+usage: tidevice crashreport [-h] [--list] [--keep] [--clear] [output_directory]
+
+positional arguments:
+  output_directory  The output dir to save crash logs synced from device (default: None)
+
+optional arguments:
+  -h, --help        show this help message and exit
+  --list            list all crash files (default: False)
+  --keep            copy but do not remove crash reports from device (default: False)
+  --clear           clear crash files (default: False)
+```
 
 ### Other
 ```bash

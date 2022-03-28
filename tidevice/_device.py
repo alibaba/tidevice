@@ -29,6 +29,7 @@ from PIL import Image
 from retry import retry
 
 from . import bplist
+from ._crash import CrashManager
 from ._imagemounter import ImageMounter, cache_developer_image
 from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
@@ -471,6 +472,32 @@ class BaseDevice():
         })
         return ret
 
+    def get_crashmanager(self) -> CrashManager:
+        """
+        https://github.com/libimobiledevice/libimobiledevice/blob/master/tools/idevicecrashreport.c
+        """
+        # read "ping" message which indicates the crash logs have been moved to a safe harbor
+        move_conn = self.start_service(LockdownService.CRASH_REPORT_MOVER_SERVICE)
+        ack = b'ping\x00'
+        if ack != move_conn.recvall(len(ack)):
+            raise ServiceError("ERROR: Crash logs could not be moved. Connection interrupted")
+        
+        copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
+        return CrashManager(copy_conn)
+
+    def execute_crash_commands(self, output_dir, command):
+        move_conn = self.start_service(LockdownService.CRASH_REPORT_MOVER_SERVICE)
+        copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
+
+        cm = CrashManager(move_conn, copy_conn, output_dir)
+        if command == 'ls':
+            cm.preview()
+        elif command == 'cp':
+            cm.copy()
+        elif command == 'mv':
+            cm.move()
+        elif command == 'rm':
+            cm.remove()
     def start_service(self, name: str) -> PlistSocket:
         try:
             return self._unsafe_start_service(name)

@@ -45,10 +45,10 @@ class Sync(PlistSocketProperty):
     def _next_tag(self):
         self.__tag += 1
         return self.__tag
-    
+
     def recvall(self, size: int) -> bytearray:
         return self.psock.recvall(size)
-    
+
     def sendall(self, data: typing.Union[bytes, bytearray]) -> int:
         return self.psock.sendall(data)
 
@@ -112,6 +112,7 @@ class Sync(PlistSocketProperty):
         return self._recv()
 
     def listdir(self, dpath: typing.Union[str, pathlib.Path]) -> typing.List[str]:
+        """ same as os.listdir """
         if isinstance(dpath, pathlib.Path):
             dpath = dpath.as_posix()
         self._send(AFC.OP_READ_DIR, dpath.encode('utf-8'))
@@ -119,7 +120,7 @@ class Sync(PlistSocketProperty):
         fnames = []
         for v in pkg.payload.rstrip(b'\x00').split(b'\x00'):
             fname = v.decode('utf-8')
-            if fname in ('.', '..'):
+            if fname in ('', '.', '..'):
                 continue
             fnames.append(fname)
         return fnames
@@ -137,10 +138,12 @@ class Sync(PlistSocketProperty):
         """
         return self.remove(dpath)
 
-    def remove(self, dpath: str):
+    def remove(self, dpath: typing.Union[str, pathlib.Path]):
         """
         Remove can also remove empty directory
         """
+        if isinstance(dpath, pathlib.Path):
+            dpath = dpath.as_posix()
         pkg = self._request(AFC.OP_REMOVE_PATH, self._pad00(dpath))
         return pkg.status
 
@@ -163,6 +166,9 @@ class Sync(PlistSocketProperty):
                 SimpleNamespace(is_link, is_dir, st_size, st_mtime, st_ctime, st_ifmt)
             else:
                 return_value, error(None or AFCStatus)
+        
+        Raises:
+            MuxError
 
         Raw return:
             {'st_size': '96',
@@ -205,15 +211,18 @@ class Sync(PlistSocketProperty):
             return stat_result, None
         return stat_result
 
-    def rmtree(self, dpath: str) -> list:
+    def rmtree(self, dpath: typing.Union[str, pathlib.Path]) -> list:
         """ remove recursive """
+        if isinstance(dpath, pathlib.Path):
+            dpath = dpath.as_posix()
         info = self.stat(dpath)
-        if info.is_dir:
+        if info.is_dir():
             rmfiles = []
             for fname in self.listdir(dpath):
-                fpath = dpath.rstrip("/") + "/" + fname
-                files = self.rmtree(fpath)
-                rmfiles.extend(files)
+                if fname != "":
+                    fpath = dpath.rstrip("/") + "/" + fname
+                    files = self.rmtree(fpath)
+                    rmfiles.extend(files)
             rmfiles.append(dpath + "/")
             self.rmdir(dpath)
             return rmfiles
@@ -221,31 +230,44 @@ class Sync(PlistSocketProperty):
             self.remove(dpath)
             return [dpath]
 
-    def treeview(self, dpath: str, depth=2, _prefix='', _last=False, _depth=0):
+    def treeview(self, dpath: str, depth: int = 100):
+        self._treeview(dpath, depth=depth)
+
+    def _treeview(self, dpath: str, depth=2, _prefix="", _last=True, _depth=0):
         """
         depth: -1 means ignore depth
+
+        Output example:
+        `-- tmp
+            |-- 1.jpg
+            |-- bb
+            |   `-- tmp
+            |       `-- hello.txt
+            `-- world.txt
         """
         if depth != -1 and _depth > depth:
             return
-        info, err = self.stat(dpath, with_error=True)
-        if err:
-            print("{} [ERR] {!r} {!s}".format(_prefix, os.path.basename(dpath),
-                                              err))
-        elif info.is_dir:
-            print(_prefix, "-", os.path.basename(dpath) + "/")
-            filenames = self.listdir(dpath)
-            for fname in filenames:
-                if fname == "":  # strange name, but exists
-                    continue
-                _last = (fname == filenames[-1])
-                fpath = dpath.rstrip("/") + "/" + fname
-                self.treeview(fpath,
-                              _prefix=_prefix + " ",
-                              depth=depth,
-                              _last=_last,
-                              _depth=_depth + 1)
-        else:
-            print(_prefix, "-", os.path.basename(dpath))
+        try:
+            info = self.stat(dpath)
+            name_prefix = "`--" if _last else "|--"
+            prefix = _prefix + name_prefix
+            if info.is_dir():
+                print(prefix, os.path.basename(dpath) + "/", flush=True)
+                
+                # Note: name can be ""
+                filenames = self.listdir(dpath)
+                for idx, fname in enumerate(filenames):
+                    last = (idx == len(filenames) - 1)
+                    fpath = dpath.rstrip("/") + "/" + fname
+                    self._treeview(dpath=fpath,
+                                  depth=depth,
+                                  _prefix=_prefix + ("    " if _last else "|   "),
+                                  _last=last,
+                                  _depth=_depth + 1)
+            else:
+                print(prefix, os.path.basename(dpath), flush=True)
+        except MuxError as e:
+            print("ERR:", e)
 
     def walk(
         self,
@@ -255,7 +277,7 @@ class Sync(PlistSocketProperty):
         """
         Same as os.walk but implemented for AFC
         """
-        if not self.stat(top).is_dir:
+        if not self.stat(top).is_dir():
             return
         allfiles = self.listdir(top)
         dirs, files = [], []
@@ -265,8 +287,8 @@ class Sync(PlistSocketProperty):
 
             path = pathjoin(top, fname)
             info = self.stat(path)
-            if info.is_dir:
-                if info.is_link:
+            if info.is_dir():
+                if info.is_link():
                     if followlinks:
                         dirs.append(fname)
                     continue
@@ -324,8 +346,15 @@ class Sync(PlistSocketProperty):
                 left_size -= len(pkg.payload)
                 yield pkg.payload
 
-    def pull(self, src: typing.Union[pathlib.Path, str], dst: typing.Union[str, pathlib.Path] = "./"):
-        """ pull recursive dir and files """
+    def pull(self,
+             src: typing.Union[str, pathlib.Path],
+             dst: typing.Union[str, pathlib.Path] = "./",
+             remove: bool = False):
+        """ pull recursive dir and files
+        Args:
+            src, dst: source and destination file
+            remove (bool): should remove after pulled
+        """
         if isinstance(src, str):
             src = pathlib.Path(src)
         if isinstance(dst, str):
@@ -343,6 +372,8 @@ class Sync(PlistSocketProperty):
             with dst.open("wb") as f:
                 for chunk in self.iter_content(src):
                     f.write(chunk)
+        if remove:
+            self.rmtree(src)
 
     def pull_content(self, path: str) -> bytearray:
         buf = bytearray()
