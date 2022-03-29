@@ -571,7 +571,11 @@ class BaseDevice():
     @property
     def product_version(self) -> str:
         return self.get_value("ProductVersion", no_session=True)
-
+    
+    @property
+    def product_type(self) -> str:
+        return self.get_value("ProductType", no_session=True)
+    
     def app_sync(self, bundle_id: str, command: str = "VendDocuments") -> Sync:
         # Change command(VendContainer -> VendDocuments)
         # According to https://github.com/GNOME/gvfs/commit/b8ad223b1e2fbe0aec24baeec224a76d91f4ca2f

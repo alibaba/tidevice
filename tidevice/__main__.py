@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import typing
 from collections import defaultdict
 from datetime import datetime
 from pprint import pformat, pprint
@@ -20,14 +21,15 @@ from typing import Optional, Union
 
 import requests
 from logzero import setup_logger
+from tabulate import tabulate
 
 from ._device import Device
 from ._imagemounter import cache_developer_image
 from ._ipautil import IPAReader
 from ._perf import DataType
 from ._proto import LOG, MODELS, PROGRAM_NAME
-from ._types import ConnectionType
 from ._relay import relay
+from ._types import ConnectionType
 from ._usbmux import Usbmux
 from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._version import __version__
@@ -79,24 +81,34 @@ def _udid2device(udid: Optional[str] = None) -> Device:
 
 
 def cmd_list(args: argparse.Namespace):
-    if not args.json and is_atty:
-        print("List of apple devices attached", file=sys.stderr)
+    _json: typing.Final[bool] = args.json
+    ds = um.device_list()
+    if args.usb:
+        ds = [info for info in ds if info.conn_type == ConnectionType.USB]
+    
+    if args.one:
+        for info in ds:
+            print(info.udid)
+        return
 
-    result = []
-    for dinfo in um.device_list():
+    headers = ['UDID', 'NAME', 'MarketName', 'ProductVersion', "ConnType"]
+    keys = ["udid", "name", "market_name", "product_version", "conn_type"]
+    tabdata = []
+    for dinfo in ds:
         udid, conn_type = dinfo.udid, dinfo.conn_type
         try:
             _d = Device(udid, um)
             name = _d.name
-            product_version = _d.product_version
-            if not args.json:
-                print(f"{udid}\t{name}\t{product_version}\t{conn_type}")
-            else:
-                result.append(dict(udid=udid, name=name, conn_type=conn_type, product_version=product_version))
+            tabdata.append([udid, name, MODELS.get(_d.product_type, "-"), _d.product_version, conn_type])
         except MuxError:
             name = ""
-    if args.json:
+    if _json:
+        result = []
+        for item in tabdata:
+            result.append({key: item[idx] for idx, key in enumerate(keys)})
         _print_json(result)
+    else:
+        print(tabulate(tabdata, headers=headers))
 
 
 def _print_json(value):
@@ -572,7 +584,14 @@ _commands = [
          flags=[
              dict(args=['--json'],
                   action='store_true',
-                  help='output in json format')
+                  help='output in json format'),
+             dict(args=['--usb'],
+                  action='store_true',
+                  help='usb USB device'),
+             dict(args=['-1'],
+                  dest="one",
+                  action='store_true',
+                  help='output one entry per line')
          ],
          help="show connected iOS devices"),
     dict(
