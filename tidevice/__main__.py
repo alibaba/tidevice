@@ -355,6 +355,10 @@ def cmd_crashreport(args: argparse.Namespace):
     if args.clear:
         cm.remove_all()
         return
+    if not args.output_directory:
+        print("OUTPUT_DIRECTORY must be provided")
+        sys.exit(1)
+
     remove: bool = not args.keep
     cm.afc.pull("/", args.output_directory, remove=remove)
     logger.info("Done")
