@@ -11,6 +11,7 @@ import socket
 import ssl
 import struct
 import threading
+import typing
 import weakref
 from typing import Any, Union
 
@@ -53,14 +54,14 @@ class SafeStreamSocket:
                 family = socket.AF_INET
             self._sock = socket.socket(family, socket.SOCK_STREAM)
             self._sock.connect(addr)
+        
+        self._sock_gclist = [self._sock]
 
-        self._finalizer = weakref.finalize(self, self._cleanup)
-    
-    def _cleanup(self):
-        logger.debug("Socket %d closed", self._id)
-        self._sock.close()
-        if hasattr(self, "_dup_sock"):
-            self._dup_sock.close()
+        def _cleanup(socks: typing.List[socket.socket]):
+            for sock in socks:
+                sock.close()
+
+        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist)
     
     def close(self):
         self._finalizer()
@@ -96,6 +97,7 @@ class SafeStreamSocket:
         # logger.debug("Switch to ssl")
         assert os.path.isfile(pemfile)
         self._dup_sock = self._sock.dup()
+        self._sock_gclist.append(self._dup_sock)
         
         # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
         context = ssl.SSLContext(ssl.PROTOCOL_TLS)
@@ -189,6 +191,7 @@ class PlistSocketProperty:
     def __init__(self, psock: PlistSocket):
         self._psock = psock
         self.prepare()
+        self._finalizer = weakref.finalize(self, self.psock.close)
     
     @property
     def psock(self) -> PlistSocket:
@@ -202,5 +205,12 @@ class PlistSocketProperty:
     
     def recv_packet(self, header_size=None) -> dict:
         return self.psock.recv_packet(header_size)
+    
+    def close(self):
+        self._finalizer()
+    
+    @property
+    def closed(self) -> bool:
+        return not self._finalizer.alive
     
     

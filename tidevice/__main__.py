@@ -108,7 +108,7 @@ def cmd_list(args: argparse.Namespace):
             result.append({key: item[idx] for idx, key in enumerate(keys)})
         _print_json(result)
     else:
-        print(tabulate(tabdata, headers=headers))
+        print(tabulate(tabdata, headers=headers, tablefmt="plain"))
 
 
 def _print_json(value):
@@ -534,7 +534,7 @@ def cmd_ps(args: argparse.Namespace):
     for p in ps:
         if not args.all and not p['isApplication']:
             continue
-        print(fmt.format(*[p[key] for key in keys]))
+        print(fmt.format(*[p[key] for key in keys]), flush=True)
 
 
 def cmd_perf(args: argparse.Namespace):
