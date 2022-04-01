@@ -23,7 +23,6 @@ import zipfile
 from typing import Iterator, Optional, Union
 
 import requests
-from cached_property import cached_property
 from logzero import setup_logger
 from PIL import Image
 from retry import retry
@@ -86,7 +85,7 @@ class BaseDevice():
             self._usbmux = usbmux
 
         self._udid = udid
-        self._info: DeviceInfo = self.info
+        self._info: DeviceInfo = None
         self._lock = threading.Lock()
         self._pair_record = None
 
@@ -104,21 +103,25 @@ class BaseDevice():
     def usbmux(self) -> Usbmux:
         return self._usbmux
 
-    @cached_property
+    @property
     def info(self) -> DeviceInfo:
+        if self._info:
+            return self._info
         devices = self._usbmux.device_list()
-        if not self._udid:
-            assert len(
-                devices
-            ) == 1, "Device is not present or multi devices connected"
-            _d = devices[0]
-            self._udid = _d.udid
-            return _d
-        else:
+        if self._udid:
             for d in devices:
                 if d.udid == self._udid:
-                    return d
-        raise MuxError("Device: {} not ready".format(self._udid))
+                    self._info = d
+        else:
+            if len(devices) != 1:
+                raise MuxError("Device is not present or multi devices connected")
+            _d = devices[0]
+            self._udid = _d.udid
+            self._info = _d
+
+        if not self._info:
+            raise MuxError("Device: {} not ready".format(self._udid))
+        return self._info
 
     def is_connected(self) -> bool:
         return self.udid in self.usbmux.device_udid_list()
@@ -129,7 +132,7 @@ class BaseDevice():
     
     @property
     def devid(self) -> int:
-        return self._info.device_id
+        return self.info.device_id
 
     @property
     def pair_record(self) -> dict:

@@ -58,6 +58,7 @@ class SafeStreamSocket:
         self._sock_gclist = [self._sock]
 
         def _cleanup(socks: typing.List[socket.socket]):
+            logger.debug("CLOSE(%d)", self._id)
             for sock in socks:
                 sock.close()
 

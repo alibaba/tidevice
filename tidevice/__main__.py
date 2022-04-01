@@ -381,7 +381,7 @@ def cmd_developer(args: argparse.Namespace):
 
 def cmd_relay(args: argparse.Namespace):
     d = _udid2device(args.udid)
-    relay(d, args.lport, args.rport, debug=args.x)
+    relay(d, args.lport, args.rport, debug=args.debug)
 
 
 def cmd_wdaproxy(args: argparse.Namespace):
@@ -709,7 +709,7 @@ _commands = [
     dict(action=cmd_relay,
          command="relay",
          flags=[
-             dict(args=['-x'],
+             dict(args=['-x', "--debug"],
                   action='store_true',
                   help='verbose data traffic, hexadecimal'),
              dict(args=['lport'], type=int, help='local port'),
