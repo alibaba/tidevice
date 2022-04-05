@@ -221,36 +221,46 @@ class TheServer:
                 yield hexdump.hexdump(data, "return")
         elif b'bplist00' in data:
             # parse bplist data
-            from tinstruments import bplist
-            buf = data
-            while True:
-                lindex = buf.find(b'bplist00')
-                #print("bplist00", hex(lindex))
-                if lindex == -1:
-                    break
-                m = re.search(b"\x00{6}[\x02\x01]{2}.{24}", buf)
-                if not m:
-                    break
-                rindex = m.end()
+            lindex = data.find(b'bplist00')
+            rindex = data.find(b'bplist00', lindex + 1)
+            plistdata = data[lindex:rindex]
 
-                yield hexdump.hexdump(buf[:lindex], "return")
-                try:
-                    yield "## NSKeyedArchiver-BINARY: [{}, {}]".format(hex(lindex), hex(rindex))
-                    pdata = bplist.objc_decode(buf[lindex:rindex])
-                    yield pprint.pformat(pdata)
-                except bplist.InvalidNSKeyedArchiverFormat:
-                    yield "## Plist-BINARY: [{}, {}]".format(hex(lindex), hex(rindex))
-                    pdata = bplist.loads(buf[lindex:rindex])
-                    yield pprint.pformat(pdata)
-                except Exception as e:
-                    yield "## Parse plist-BINARY error: [{}, {}]".format(hex(lindex), hex(rindex))
-                    yield traceback.format_exc()
-                    # BPlistdata failed string indices must be integers
-                    yield "load binary plistdata failed: {}".format(e)
-                    yield hexdump.hexdump(buf[lindex:rindex], "return")
-                finally:
-                    buf = buf[rindex:]
-            yield hexdump.hexdump(buf, "return")
+            yield hexdump.hexdump(data[:lindex], "return")
+            yield "## Plist-Binary"
+            try:
+                pdata = plistlib.loads(plistdata)
+                yield pprint.pformat(pdata)
+                # yield hexdump.hexdump(data[rindex:], "return")
+            except:
+                yield hexdump.hexdump(data[rindex:], "return")
+            # while True:
+            #     lindex = buf.find(b'bplist00')
+            #     #print("bplist00", hex(lindex))
+            #     if lindex == -1:
+            #         break
+            #     m = re.search(b"\x00{6}[\x02\x01]{2}.{24}", buf)
+            #     if not m:
+            #         break
+            #     rindex = m.end()
+
+            #     yield hexdump.hexdump(buf[:lindex], "return")
+            #     try:
+            #         yield "## NSKeyedArchiver-BINARY: [{}, {}]".format(hex(lindex), hex(rindex))
+            #         pdata = bplist.objc_decode(buf[lindex:rindex])
+            #         yield pprint.pformat(pdata)
+            #     except bplist.InvalidNSKeyedArchiverFormat:
+            #         yield "## Plist-BINARY: [{}, {}]".format(hex(lindex), hex(rindex))
+            #         pdata = bplist.loads(buf[lindex:rindex])
+            #         yield pprint.pformat(pdata)
+            #     except Exception as e:
+            #         yield "## Parse plist-BINARY error: [{}, {}]".format(hex(lindex), hex(rindex))
+            #         yield traceback.format_exc()
+            #         # BPlistdata failed string indices must be integers
+            #         yield "load binary plistdata failed: {}".format(e)
+            #         yield hexdump.hexdump(buf[lindex:rindex], "return")
+            #     finally:
+            #         buf = buf[rindex:]
+            # yield hexdump.hexdump(buf, "return")
         else:  # just call hexdump
             yield f"## RAW length={len(data)}"
             max_length = 512
