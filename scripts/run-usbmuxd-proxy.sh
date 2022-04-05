@@ -3,8 +3,10 @@
 # run command first: sudo mv /var/run/usbmuxd /var/run/usbmuxx
 # forward through socat: sudo socat -t100 -x -v UNIX-LISTEN:/var/run/usbmuxd,mode=777,reuseaddr,fork UNIX-CONNECT:/var/run/usbmuxx
 
-UDID=$(idevice_id -l)
-echo "UDID: ${UDID:?} $(idevicename -u $UDID)"
+DEVICES=($(tidevice list | sed -n '2p'))
+UDID=${DEVICES[0]}
+NAME=${DEVICES[1]}
+echo "UDID: ${UDID:?} ${NAME}"
 
 # 保存设备配对公钥
 tidevice savesslfile # not implemented yet.
