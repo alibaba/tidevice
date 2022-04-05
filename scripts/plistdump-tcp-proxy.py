@@ -34,6 +34,7 @@ delay = 0.0001
 
 _package_index = [0]
 
+
 def next_package_index() -> int:
     _package_index[0] += 1
     return _package_index[0]
@@ -85,9 +86,15 @@ class TheServer:
         self.ssl_server.bind(('localhost', 10443))
         self.ssl_server.listen(200)
 
+        self.sslctx = ssl.create_default_context(cafile=pemfile)
+        self.sslctx.keylog_filename = os.getenv("SSLKEYLOGFILE")
+        self.sslctx.check_hostname = False
+        self.sslctx.verify_mode = ssl.CERT_NONE
+        self.sslctx.load_cert_chain(keyfile=pemfile,
+                                    certfile=pemfile)
+
         self.forward_to = forward_to
         self.parse_ssl = parse_ssl
-        self.pemfile = pemfile
 
         self.__tempsocks = {}  # Store SSLSocket
         self.__tag = 0
@@ -175,16 +182,13 @@ class TheServer:
     def on_ssl_accept(self):
         sock, addr = self.ssl_server.accept()
 
-        header = recvall(sock, 4)  #sock.recv(4)
+        header = recvall(sock, 4)  # sock.recv(4)
         (tag, ) = struct.unpack("I", header)
         logger.info("on ssl accept: %s, tag: %d", addr, tag)
         ssl_serversock = self.__tempsocks[tag]
 
         def wait_ssl_socket():
-            ssock = ssl.wrap_socket(sock,
-                                    keyfile=self.pemfile,
-                                    certfile=self.pemfile,
-                                    server_side=True)
+            ssock = self.sslctx.wrap_socket(sock, server_side=True)
             self.pipe_socket(ssock, ssl_serversock, tag)
 
         th = threading.Thread(target=wait_ssl_socket)
@@ -269,18 +273,24 @@ class TheServer:
 
         tag = self.socket_tags[self.s]
         direction = ">"
-        if tag < 0:
+        if tag > 0:
+            print('\33[93m', end="")
+        else:
             direction = "<"
+            print('\33[94m', end="")
+
         index = abs(tag)
 
-        print(f' {index} '.center(50, direction))
         if isinstance(self.s, ssl.SSLSocket):  # secure tunnel
-            print('\33[32m', end="")
+            print('\33[47m', end="")
+        print(f' {index} '.center(50, direction), end="")
+        print('\33[49m')
+
         print(f"Length={len(data)} 0x{len(data):02X}")
         print("Time:", datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
 
         # TODO
-        #if tag < 0:
+        # if tag < 0:
         #    print("Skip show receving data")
         #    return
         if True:
@@ -298,24 +308,21 @@ class TheServer:
             for line in self._iter_pretty_format_data(data):
                 print(line)
 
-        #else:
+        # else:
         #    try:
         #        pdata = data.decode('utf-8')
         #        print(pdata)
         #    except UnicodeDecodeError:
         #        hexdump.hexdump(data)
 
-        if isinstance(self.s, ssl.SSLSocket):  # secure tunnel
-            print('\33[0m', end="")
+        print('\33[0m', end="")
 
     def man_in_middle_ssl(self, clientsock, ssl_hello_data: bytes):
         serversock = self.channel[clientsock]
         tag = self.unpipe_socket(clientsock)
 
-        ssl_serversock = ssl.wrap_socket(
-            serversock,
-            keyfile=self.pemfile,  # iPhoneSE
-            certfile=self.pemfile)
+        ssl_serversock = self.sslctx.wrap_socket(
+            serversock)
         print("serversock secure ready, tag: {}".format(tag))
 
         self.__tempsocks[tag] = ssl_serversock
@@ -352,7 +359,7 @@ class TheServer:
         print('[proxy]', self.socket_tags.get(self.s), "has disconnected")
         # print('[proxy]', self.channel[self.s].getpeername(), "has disconnected, too")
 
-        #remove objects from input_list
+        # remove objects from input_list
 
         # self.input_list.remove(self.s)
         # self.input_list.remove(self.channel[self.s])
@@ -393,7 +400,7 @@ def main():
                         help="parse ssl data")
     parser.add_argument("--pemfile", help="ssl pemfile")
     args = parser.parse_args()
-    #print(args)
+    # print(args)
 
     listen_addr = _parse_addr(args.listen_addr)
     forward_to = _parse_addr(args.forward_to)
