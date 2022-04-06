@@ -57,13 +57,18 @@ function recover() {
 	kill %%
 }
 
-sudo mv ${SOCKET} ${BACKUP_SOCKET}
+mv ${SOCKET} ${BACKUP_SOCKET}
 trap recover EXIT
 
 # 启用 tcp redirect 后可以用 https://github.com/douniwan5788/usbmuxd_debug.git 在wireshark中抓包分析
+# 注意 SSLContext.keylog_filename 支持需要使用 openssl 1.1.1 的 python 3.8 及以上版本, Mac自带的 python3.8 使用 LibreSSL 所以不支持.
+# 可以使用以下方法查看
+# >>> import ssl; ssl.OPENSSL_VERSION
+# sudo SSLKEYLOGFILE=./tlskeys.log ./run-usbmuxd-proxy.sh --ssl -t 9876
 if [ x"$REDIRECT_PORT" != x"" ]; then
 	# Setup pipe over TCP that we can tap into
 	socat -t100 "TCP-LISTEN:${REDIRECT_PORT},bind=127.0.0.1,reuseaddr,fork" "UNIX-CONNECT:${BACKUP_SOCKET}" &
+	echo $SSLKEYLOGFILE
 	export SSLKEYLOGFILE
 fi
 

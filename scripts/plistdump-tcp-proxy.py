@@ -130,7 +130,6 @@ class TheServer:
 
                     self.on_close()
                 except Exception as e:
-                    import traceback
                     traceback.print_exc()
                     #logger.warning("Unknown error: %s", e)
 
