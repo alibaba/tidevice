@@ -3,33 +3,75 @@
 # run command first: sudo mv /var/run/usbmuxd /var/run/usbmuxx
 # forward through socat: sudo socat -t100 -x -v UNIX-LISTEN:/var/run/usbmuxd,mode=777,reuseaddr,fork UNIX-CONNECT:/var/run/usbmuxx
 
-UDID=$(idevice_id -l)
-echo "UDID: ${UDID:?} $(idevicename -u $UDID)"
+SOCKET="/var/run/usbmuxd"
+BACKUP_SOCKET="$(dirname "${SOCKET}")/$(basename "${SOCKET}").tidevice_bak"
+FORWARD_SOCKET=${BACKUP_SOCKET}
 
-# 保存设备配对公钥
-tidevice savesslfile # not implemented yet.
-
-PEMFILE=ssl/${UDID}_root.pem
-if ! test -f $PEMFILE
-then
-	echo "Pemfile: $PEMFILE not exists"
-	exit 1
-fi
-
-
-if test $(whoami) != "root"
-then
+if test $(whoami) != "root"; then
 	echo "Must be run as root"
 	exit 1
 fi
 
-function recover(){
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	-s | --ssl)
+		SSL="--ssl"
+		shift # past argument
+		;;
+	-t | --tcp_redirect)
+		REDIRECT_PORT="$2"
+		FORWARD_SOCKET="127.0.0.1:${REDIRECT_PORT}"
+		shift # past argument
+		shift # past value
+		;;
+	-* | --*)
+		echo "Unknown option $1"
+		exit 1
+		;;
+	*)
+		shift # past argument
+		;;
+	esac
+done
+
+DEVICES=($(tidevice list | sed -n '2p'))
+UDID=${DEVICES[0]}
+NAME=${DEVICES[1]}
+echo "UDID: ${UDID:?} ${NAME}"
+
+# 保存设备配对公钥
+tidevice savesslfile
+
+# 需要host证书提供给client，host私钥以解密client数据
+
+PEMFILE=ssl/${UDID}_all.pem
+if ! test -f $PEMFILE; then
+	echo "Pemfile: $PEMFILE not exists"
+	exit 1
+fi
+
+function recover() {
 	echo "Recover"
-	mv /var/run/usbmuxx /var/run/usbmuxd
+	mv ${BACKUP_SOCKET} ${SOCKET}
+	# kill socat
+	kill %%
 }
 
-sudo mv /var/run/usbmuxd /var/run/usbmuxx
+mv ${SOCKET} ${BACKUP_SOCKET}
 trap recover EXIT
 
-sudo python3 plistdump-tcp-proxy.py -L /var/run/usbmuxd -F /var/run/usbmuxx \
+# 启用 tcp redirect 后可以用 https://github.com/douniwan5788/usbmuxd_debug.git 在wireshark中抓包分析
+# 注意 SSLContext.keylog_filename 支持需要使用 openssl 1.1.1 的 python 3.8 及以上版本, Mac自带的 python3.8 使用 LibreSSL 所以不支持.
+# 可以使用以下方法查看
+# >>> import ssl; ssl.OPENSSL_VERSION
+# sudo SSLKEYLOGFILE=./tlskeys.log ./run-usbmuxd-proxy.sh --ssl -t 9876
+if [ x"$REDIRECT_PORT" != x"" ]; then
+	# Setup pipe over TCP that we can tap into
+	socat -t100 "TCP-LISTEN:${REDIRECT_PORT},bind=127.0.0.1,reuseaddr,fork" "UNIX-CONNECT:${BACKUP_SOCKET}" &
+	echo $SSLKEYLOGFILE
+	export SSLKEYLOGFILE
+fi
+
+# sudo socat -t100 -v UNIX-LISTEN:${SOCKET},mode=777,reuseaddr,fork UNIX-CONNECT:${SOCKET}.tidevice_orig
+python3 plistdump-tcp-proxy.py -L ${SOCKET} -F ${FORWARD_SOCKET} ${SSL} \
 	--pemfile ${PEMFILE} "$@"

@@ -573,8 +573,11 @@ def cmd_savesslfile(args: argparse.Namespace):
     d = _udid2device(args.udid)
     pr = d.pair_record
 
-    pathlib.Path(f"ssl/{d.udid}_host.pem").write_bytes(pr['HostCertificate'])
-    pathlib.Path(f"ssl/{d.udid}_root.pem").write_bytes(pr['RootCertificate'])
+    pathlib.Path(f"ssl/{d.udid}_all.pem").write_bytes(
+        pr['HostPrivateKey']
+        + pr['HostCertificate']
+        + pr['RootCertificate']
+    )
 
 
 def cmd_test(args: argparse.Namespace):
