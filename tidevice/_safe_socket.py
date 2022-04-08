@@ -57,16 +57,16 @@ class SafeStreamSocket:
         
         self._sock_gclist = [self._sock]
 
-        def _cleanup(socks: typing.List[socket.socket]):
-            logger.debug("CLOSE(%d)", self._id)
+        def _cleanup(socks: typing.List[socket.socket], _id: int):
+            logger.debug("CLOSE(%d)", _id)
             for sock in socks:
                 sock.close()
 
-        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist)
+        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist, self._id)
     
     def close(self):
         self._finalizer()
-    
+        
     @property
     def closed(self) -> bool:
         return not self._finalizer.alive

@@ -278,7 +278,6 @@ class BaseDevice():
     def _system_BUID(self):
         return self.pair_record['SystemBUID']
 
-    @retry(OSError, tries=2, delay=3, logger=logger)
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
@@ -304,7 +303,6 @@ class BaseDevice():
             data = conn.send_recv_packet(payload)
         self._usbmux._check(data)
         logger.debug("connected to port: %d", _port)
-
         if _ssl:
             conn.switch_to_ssl(self.ssl_pemfile_path)
         return conn
@@ -488,19 +486,6 @@ class BaseDevice():
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
-    def execute_crash_commands(self, output_dir, command):
-        move_conn = self.start_service(LockdownService.CRASH_REPORT_MOVER_SERVICE)
-        copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
-
-        cm = CrashManager(move_conn, copy_conn, output_dir)
-        if command == 'ls':
-            cm.preview()
-        elif command == 'cp':
-            cm.copy()
-        elif command == 'mv':
-            cm.move()
-        elif command == 'rm':
-            cm.remove()
     def start_service(self, name: str) -> PlistSocket:
         try:
             return self._unsafe_start_service(name)
@@ -824,7 +809,7 @@ class BaseDevice():
                     env: dict = {},
                     target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
-                    quit_event: threading.Event = None) -> int:  # pid
+                    quit_event: threading.Event = None) -> typing.Tuple[PlistSocket, int]:  # pid
 
         logger = logging.getLogger(LOG.xctest)
 
@@ -953,7 +938,7 @@ class BaseDevice():
         conn.register_callback(Event.NOTIFICATION, _callback)
         if quit_event:
             conn.register_callback(Event.FINISHED, lambda _: quit_event.set())
-        return pid
+        return conn, pid
 
     def major_version(self) -> int:
         version = self.get_value("ProductVersion")
@@ -1062,7 +1047,7 @@ class BaseDevice():
         # launch test app
         # index: 1540
         xclogger = setup_logger(name='xctest')
-        pid = self._launch_app_runner(bundle_id, session_identifier,
+        _, pid = self._launch_app_runner(bundle_id, session_identifier,
             target_app_bundle_id=target_bundle_id,
             env=env, logger=xclogger)
 
