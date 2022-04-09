@@ -15,7 +15,7 @@ import typing
 import weakref
 from typing import Any, Union
 
-from ._proto import PROGRAM_NAME
+from ._proto import PROGRAM_NAME, DEFAULT_SOCKET_TIMEOUT
 from .exceptions import *
 
 logger = logging.getLogger(PROGRAM_NAME)
@@ -53,6 +53,7 @@ class SafeStreamSocket:
             else:
                 family = socket.AF_INET
             self._sock = socket.socket(family, socket.SOCK_STREAM)
+            self._sock.settimeout(DEFAULT_SOCKET_TIMEOUT)
             self._sock.connect(addr)
         
         self._sock_gclist = [self._sock]
