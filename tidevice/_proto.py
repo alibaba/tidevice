@@ -3,7 +3,7 @@
 #
 
 __all__ = [
-    'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME', "DEFAULT_SOCKET_TIMEOUT",
+    'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
     "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult"
 ]
@@ -11,9 +11,6 @@ __all__ = [
 from dataclasses import dataclass
 import datetime
 import enum
-
-
-DEFAULT_SOCKET_TIMEOUT = 120
 
 
 class LOG(str, enum.Enum):

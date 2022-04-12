@@ -503,10 +503,8 @@ class BaseDevice():
                 "Label": PROGRAM_NAME,
             })
             if 'Error' in data:  # data['Error'] is InvalidService
-                raise MuxServiceError("Could not start service: {0}! {2}".format(
-                    name, data['Error'],
-                    "Remember that you have to mount the Developer disk image on your device"
-                ))
+                error = data['Error'] # PasswordProtected, InvalidService
+                raise MuxServiceError(error)
 
         # Expect recv
         # {'EnableServiceSSL': True,
@@ -516,8 +514,9 @@ class BaseDevice():
         assert data['Service'] == name
         _ssl = data.get(
             'EnableServiceSSL',
-            False)  # and name != "com.apple.instruments.remoteserver"
+            False)
         conn = self.create_inner_connection(data['Port'], _ssl=_ssl)
+        conn.name = data['Service']
         return conn
 
     def screenshot(self) -> Image.Image:
@@ -960,22 +959,25 @@ class BaseDevice():
         return bundle_ids[0]
 
     def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
+        """ Alias of xcuitest """
+        bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
+        logger.info("BundleID: %s", bundle_id)
+        return self.xcuitest(bundle_id, target_bundle_id=target_bundle_id, logger=logger, env=env)
+
+    def xcuitest(self, bundle_id, target_bundle_id=None, logger=None, env: dict={}):
         """
         Launch xctrunner and wait until quit
 
         Args:
+            bundle_id (str): xctrunner bundle id
             target_bundle_id (str): optional, launch WDA-UITests will not need it
             env: launch env
         """
         if not logger:
             logger = setup_logger(level=logging.INFO)
-        
-        bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
-        logger.info("BundleID: %s", bundle_id)
 
         product_version = self.get_value("ProductVersion")
         logger.info("ProductVersion: %s", product_version)
-
         logger.info("DeviceIdentifier: %s", self.udid)
 
         XCODE_VERSION = 29

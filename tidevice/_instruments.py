@@ -392,6 +392,7 @@ class DTXService(PlistSocketProperty):
         data = bytearray()
         data.extend(mheader)
         data.extend(payload)
+        logger.debug("SEND DTXMessage: channel:%d expect_reply:%d data_length:%d, data...", channel, int(expects_reply), len(data))
         self.psock.sendall(data)
         return _message_id
 
@@ -594,7 +595,7 @@ class DTXService(PlistSocketProperty):
                           flags=flags,
                           result=result)
         
-        logger.debug("DTXMessage: expects_reply:%d flags:%d %s", mheader.expects_reply, dtxm.flags, dtxm.result)
+        logger.debug("RECV DTXMessage: expects_reply:%d flags:%d conv:%d %s", mheader.expects_reply, dtxm.flags, mheader.conversation_index, dtxm.result)
 
         if mheader.conversation_index == 1:  # reply from server
             self._reply_queues[mheader.message_id].put(dtxm)

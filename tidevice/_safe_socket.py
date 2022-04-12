@@ -15,7 +15,8 @@ import typing
 import weakref
 from typing import Any, Union
 
-from ._proto import PROGRAM_NAME, DEFAULT_SOCKET_TIMEOUT
+from ._proto import PROGRAM_NAME
+from ._utils import set_socket_timeout
 from .exceptions import *
 
 logger = logging.getLogger(PROGRAM_NAME)
@@ -38,6 +39,8 @@ class SafeStreamSocket:
         """
         self._id = get_uniq_id()
         self._sock = None
+        self._name = None
+
         if isinstance(addr, socket.socket):
             self._sock = addr
         else:
@@ -53,17 +56,19 @@ class SafeStreamSocket:
             else:
                 family = socket.AF_INET
             self._sock = socket.socket(family, socket.SOCK_STREAM)
-            self._sock.settimeout(DEFAULT_SOCKET_TIMEOUT)
             self._sock.connect(addr)
         
         self._sock_gclist = [self._sock]
 
-        def _cleanup(socks: typing.List[socket.socket], _id: int):
-            logger.debug("CLOSE(%d)", _id)
+        def _cleanup(socks: typing.List[socket.socket]):
+            _id = str(self.id)
+            if self.name:
+                _id = self.name + ":" + str(self.id)
+            logger.debug("CLOSE(%s)", _id)
             for sock in socks:
                 sock.close()
 
-        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist, self._id)
+        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist)
     
     def close(self):
         self._finalizer()
@@ -75,6 +80,14 @@ class SafeStreamSocket:
     @property
     def id(self) -> int:
         return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @name.setter
+    def name(self, new_name: str):
+        self._name = new_name
 
     def get_socket(self) -> socket.socket:
         return self._sock
@@ -92,7 +105,8 @@ class SafeStreamSocket:
         return buf
 
     def sendall(self, data: Union[bytes, bytearray]) -> int:
-        return self._sock.sendall(data)
+        with set_socket_timeout(self._sock, 10):
+            return self._sock.sendall(data)
 
     def switch_to_ssl(self, pemfile):
         """ wrap socket to SSLSocket """
