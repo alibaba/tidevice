@@ -86,7 +86,7 @@ function recover() {
 	# https://github.com/alibaba/taobao-iphone-device/commit/bb0c56eb05bf10fbd48c3f9dd0f811d3e7192306
 	# 当plistdump-tcp-proxy.py异常结束时，socat会继续运行导致端口占用，所以这里必须kill掉
 	kill %%
-	mv ${BACKUP_SOCKET} ${SOCKET}
+	safe_run false mv ${BACKUP_SOCKET} ${SOCKET}
 }
 
 safe_run false mv ${SOCKET} ${BACKUP_SOCKET}
