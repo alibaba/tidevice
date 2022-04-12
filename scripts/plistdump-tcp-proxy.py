@@ -87,6 +87,7 @@ class TheServer:
         self.ssl_server.listen(200)
 
         self.sslctx = ssl.create_default_context(cafile=pemfile)
+        self.__patch_ssl_unidirection_shutdown(self.sslctx)
         self.sslctx.keylog_filename = os.getenv("SSLKEYLOGFILE")
         self.sslctx.check_hostname = False
         self.sslctx.verify_mode = ssl.CERT_NONE
@@ -100,6 +101,36 @@ class TheServer:
         self.__tag = 0
         self._data_directory = "usbmuxd-dumpdata/" + time.strftime(
             "%Y%m%d-%H-%M-%S")
+        self.__com_apple_instruments_remoteserver_port = 0
+        self.__unwrapsocks = {}  # Store SSLSocket need unwrap
+
+    def __patch_ssl_unidirection_shutdown(self, sslctx):
+        from cffi import FFI
+        ffi = FFI()
+        ffi.cdef(r"""
+            typedef long SSL_CTX;
+        
+            void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
+            int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
+            
+            typedef struct _object {
+                long ob_refcnt;
+                void *ob_type;
+            } PyObject;
+            
+            typedef struct {
+                PyObject ob_base;
+                SSL_CTX *ctx;
+            }PySSLContext;
+        """)
+        C = ffi.dlopen(None)
+        cdata_sslctx = ffi.cast("PySSLContext*", id(sslctx))
+        # print(hex(id(sslctx)))
+
+        # print(C.SSL_CTX_get_quiet_shutdown(cdata_sslctx.ctx))
+        C.SSL_CTX_set_quiet_shutdown(cdata_sslctx.ctx, 1)
+        # print(C.SSL_CTX_get_quiet_shutdown(cdata_sslctx.ctx))
+        print("SSLSocket.unwrap patched")
 
     def main_loop(self):
         self.input_list.append(self.server)
@@ -127,7 +158,6 @@ class TheServer:
                 except ssl.SSLError as e:
                     logger.warning("SSLError: tag: %d, %s",
                                    self.socket_tags[self.s], e)
-
                     self.on_close()
                 except Exception as e:
                     traceback.print_exc()
@@ -188,6 +218,13 @@ class TheServer:
 
         def wait_ssl_socket():
             ssock = self.sslctx.wrap_socket(sock, server_side=True)
+            if self.__unwrapsocks.get(tag):
+                print("unwrap ssock")
+                unwrap_sock = ssock.unwrap()
+                unwrap_serversock = ssl_serversock
+                self.pipe_socket(unwrap_sock, unwrap_serversock, tag)
+                return
+
             self.pipe_socket(ssock, ssl_serversock, tag)
 
         th = threading.Thread(target=wait_ssl_socket)
@@ -214,6 +251,11 @@ class TheServer:
                 if 'PairRecordData' in pdata:
                     yield "... PairRecordData ..."
                 else:
+                    if 'Service' in pdata and pdata['Service'] == "com.apple.instruments.remoteserver":
+                        self.__com_apple_instruments_remoteserver_port = pdata['Port']
+                    elif 'MessageType' in pdata and pdata['MessageType'] == "Connect" and pdata['PortNumber'] == socket.htons(self.__com_apple_instruments_remoteserver_port):
+                        tag = self.socket_tags[self.s]
+                        self.__unwrapsocks[tag] = True
                     yield pprint.pformat(pdata)
                 yield hexdump.hexdump(data[rindex:], "return")
             except:
@@ -332,6 +374,9 @@ class TheServer:
 
         ssl_serversock = self.sslctx.wrap_socket(
             serversock)
+        if self.__unwrapsocks.get(tag):
+            ssl_serversock = ssl_serversock.unwrap()
+            print("ssl_serversock unwrapped")
         print("serversock secure ready, tag: {}".format(tag))
 
         self.__tempsocks[tag] = ssl_serversock
