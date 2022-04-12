@@ -299,13 +299,13 @@ class BaseDevice():
             'ProgName': PROGRAM_NAME,
         }
         logger.debug("Send payload: %s", payload)
-        with set_socket_timeout(conn.get_socket(), 5.0):
+        with set_socket_timeout(conn.get_socket, 5.0):
             data = conn.send_recv_packet(payload)
-        self._usbmux._check(data)
-        logger.debug("connected to port: %d", _port)
-        if _ssl:
-            conn.switch_to_ssl(self.ssl_pemfile_path)
-        return conn
+            self._usbmux._check(data)
+            logger.debug("connected to port: %d", _port)
+            if _ssl:
+                conn.switch_to_ssl(self.ssl_pemfile_path)
+            return conn
 
     @contextlib.contextmanager
     def create_session(self) -> PlistSocket:

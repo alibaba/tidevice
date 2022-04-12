@@ -223,14 +223,20 @@ def exec_command(cmds: typing.List[str], logfile):
 
 
 @contextlib.contextmanager
-def set_socket_timeout(conn: socket.socket, value: float):
+def set_socket_timeout(conn: typing.Union[typing.Callable[..., socket.socket], socket.socket], value: float):
     """Set conn.timeout to value
     Save previous value, yield, and then restore the previous value
     If 'value' is None, do nothing
     """
-    old_value = conn.timeout
-    conn.settimeout(value)
+    def get_conn() -> socket.socket:
+        return conn() if callable(conn) else conn    
+    
+    old_value = get_conn().timeout
+    get_conn().settimeout(value)
     try:
         yield
     finally:
-        conn.settimeout(old_value)
+        try:
+            get_conn().settimeout(old_value)
+        except:
+            pass
