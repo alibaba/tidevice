@@ -585,9 +585,7 @@ class DTXService(PlistSocketProperty):
 
     def _drain_single_message(self):
         mheader, payload = self.recv_dtx_message()
-        # print(mheader, payload)
         flags, result = DTXPayload.parse(payload)
-        # logger.info("Receive message: %s %s", flags, result) # TODO(ssx): need to delete
         dtxm = DTXMessage(payload=payload,
                           header=mheader,
                           message_id=mheader.message_id,
