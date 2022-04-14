@@ -776,7 +776,7 @@ class BaseDevice():
         """
         return self.installation.uninstall(bundle_id)
 
-    def _connect_testmanagerd_lockdown(self):
+    def _connect_testmanagerd_lockdown(self) -> DTXService:
         if self.major_version() >= 14:
             conn = self.start_service(
                 LockdownService.TestmanagerdLockdownSecure)

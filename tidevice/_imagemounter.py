@@ -92,6 +92,10 @@ class ImageMounter(PlistSocketProperty):
     SERVICE_NAME = "com.apple.mobile.mobile_image_mounter"
 
     def prepare(self):
+        """
+        Note: LookupImage might stuck and no response
+        """
+        self.psock.get_socket().settimeout(10.0)
         return super().prepare()
     
     def lookup(self, image_type="Developer") -> List[bytes]:
