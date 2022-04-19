@@ -198,9 +198,10 @@ class PlistSocket(SafeStreamSocket):
             logger.debug("RECV(%d): %s", self.id, payload)
         return payload
 
-    def send_recv_packet(self, payload: dict) -> dict:
-        self.send_packet(payload)
-        return self.recv_packet()
+    def send_recv_packet(self, payload: dict, timeout: float = 10.0) -> dict:
+        with set_socket_timeout(self.get_socket(), timeout):
+            self.send_packet(payload)
+            return self.recv_packet()
 
 
 class PlistSocketProperty:
