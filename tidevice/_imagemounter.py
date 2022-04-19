@@ -95,7 +95,6 @@ class ImageMounter(PlistSocketProperty):
         """
         Note: LookupImage might stuck and no response
         """
-        self.psock.get_socket().settimeout(10.0)
         return super().prepare()
     
     def lookup(self, image_type="Developer") -> List[bytes]:
