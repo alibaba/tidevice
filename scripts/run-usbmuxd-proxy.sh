@@ -41,17 +41,21 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-function safe_run() {
-	local SHOULD_BACKGROUD=$0
-	shift
+
+function safe_run_bg() {
 	local DEBUG_COLOR="\033[0;32m"
 	local RESET="\033[0m"
 	echo -e "${DEBUG_COLOR}>> $@""${RESET}"
-	if [ $SHOULD_BACKGROUD=true ]; then
-		"$@" &
-	else
-		"$@"
-	fi
+	"$@" &
+	PID=$!
+	trap "kill $PID" EXIT
+}
+
+function safe_run() {
+	local DEBUG_COLOR="\033[0;32m"
+	local RESET="\033[0m"
+	echo -e "${DEBUG_COLOR}>> $@""${RESET}"
+	"$@"
 }
 
 if test $(whoami) != "root"; then
@@ -82,14 +86,14 @@ if ! test -f $PEMFILE; then
 fi
 
 function recover() {
-	echo "Recover"
+	echo "Recover environment"
 	# https://github.com/alibaba/taobao-iphone-device/commit/bb0c56eb05bf10fbd48c3f9dd0f811d3e7192306
 	# 当plistdump-tcp-proxy.py异常结束时，socat会继续运行导致端口占用，所以这里必须kill掉
-	kill %%
-	safe_run false mv ${BACKUP_SOCKET} ${SOCKET}
+	# kill %%
+	safe_run mv ${BACKUP_SOCKET} ${SOCKET}
 }
 
-safe_run false mv ${SOCKET} ${BACKUP_SOCKET}
+safe_run mv ${SOCKET} ${BACKUP_SOCKET}
 trap recover EXIT
 
 # 启用 tcp redirect 后可以用 https://github.com/douniwan5788/usbmuxd_debug.git 在wireshark中抓包分析
@@ -99,7 +103,7 @@ trap recover EXIT
 # sudo SSLKEYLOGFILE=./tlskeys.log ./run-usbmuxd-proxy.sh --ssl -t 9876
 if [ x"$REDIRECT_PORT" != x"" ]; then
 	# Setup pipe over TCP that we can tap into
-	safe_run true socat -t100 "TCP-LISTEN:${REDIRECT_PORT},bind=127.0.0.1,reuseaddr,fork" "UNIX-CONNECT:${BACKUP_SOCKET}"
+	safe_run_bg socat -t100 "TCP-LISTEN:${REDIRECT_PORT},bind=127.0.0.1,reuseaddr,fork" "UNIX-CONNECT:${BACKUP_SOCKET}"
 	echo "SSLKEYLOGFILE: $SSLKEYLOGFILE"
 	export SSLKEYLOGFILE
 fi

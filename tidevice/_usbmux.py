@@ -74,7 +74,7 @@ class Usbmux:
             "kLibUSBMuxVersion": 3,
             # "ProcessID": 0, # Xcode send it processID
         }
-        data = self.send_recv(payload, timeout=5)
+        data = self.send_recv(payload, timeout=10)
         result = {}
         for item in data['DeviceList']:
             prop = item['Properties']
