@@ -9,6 +9,7 @@
 
 import argparse
 import datetime
+import logging
 import os
 import plistlib
 import pprint
@@ -22,15 +23,19 @@ import sys
 import threading
 import time
 import traceback
+import typing
+from collections import defaultdict
 
 import hexdump
-from logzero import logger
+from logzero import logger as _logger
+
+logger: logging.Logger = _logger
+del(_logger)
 
 # Changing the buffer_size and delay, you can improve the speed and bandwidth.
 # But when buffer get to high or delay go too down, you can broke things
 buffer_size = 40960
 delay = 0.0001
-
 
 _package_index = [0]
 
@@ -39,6 +44,12 @@ def next_package_index() -> int:
     _package_index[0] += 1
     return _package_index[0]
 
+
+def remove_from_list(_list: list, value):
+    try:
+        _list.remove(value)
+    except ValueError:
+        pass
 
 def create_socket(addr) -> socket.socket:
     if isinstance(addr, (tuple, list)):
@@ -67,6 +78,8 @@ class TheServer:
     input_list = []
     channel = {}
     socket_tags = {}
+    s: socket.socket = None # current handled socket
+    data: bytes = None # current received data
 
     def __init__(self,
                  listen_addr: str,
@@ -81,12 +94,14 @@ class TheServer:
             os.chmod(listen_addr, 0o777)
         self.server.listen(200)
 
+        self.pemfile = pemfile
         self.ssl_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.ssl_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.ssl_server.bind(('localhost', 10443))
         self.ssl_server.listen(200)
 
         self.sslctx = ssl.create_default_context(cafile=pemfile)
+        self.__patch_ssl_unidirection_shutdown(self.sslctx)
         self.sslctx.keylog_filename = os.getenv("SSLKEYLOGFILE")
         self.sslctx.check_hostname = False
         self.sslctx.verify_mode = ssl.CERT_NONE
@@ -96,10 +111,41 @@ class TheServer:
         self.forward_to = forward_to
         self.parse_ssl = parse_ssl
 
-        self.__tempsocks = {}  # Store SSLSocket
+        self.__port_service_map: dict = {}
+        self.__skip_ssl_tags: typing.Dict[str, bool] = defaultdict(bool)
+        self.__ssl_socks = {}  # Store SSLSocket
+        self.__tag_ports = {}
         self.__tag = 0
         self._data_directory = "usbmuxd-dumpdata/" + time.strftime(
             "%Y%m%d-%H-%M-%S")
+
+    def __patch_ssl_unidirection_shutdown(self, sslctx):
+        from cffi import FFI
+        ffi = FFI()
+        ffi.cdef(r"""
+            typedef long SSL_CTX;
+        
+            void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
+            int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
+            
+            typedef struct _object {
+                long ob_refcnt;
+                void *ob_type;
+            } PyObject;
+            
+            typedef struct {
+                PyObject ob_base;
+                SSL_CTX *ctx;
+            }PySSLContext;
+        """)
+        C = ffi.dlopen(None)
+        cdata_sslctx = ffi.cast("PySSLContext*", id(sslctx))
+        # print(hex(id(sslctx)))
+
+        # print(C.SSL_CTX_get_quiet_shutdown(cdata_sslctx.ctx))
+        C.SSL_CTX_set_quiet_shutdown(cdata_sslctx.ctx, 1)
+        # print(C.SSL_CTX_get_quiet_shutdown(cdata_sslctx.ctx))
+        print("SSLSocket.unwrap patched")
 
     def main_loop(self):
         self.input_list.append(self.server)
@@ -126,26 +172,27 @@ class TheServer:
                     self.on_recv()
                 except ssl.SSLError as e:
                     logger.warning("SSLError: tag: %d, %s",
-                                   self.socket_tags[self.s], e)
-
+                                   self.socket_tags.get(self.s, -1), e)
                     self.on_close()
                 except Exception as e:
                     traceback.print_exc()
-                    #logger.warning("Unknown error: %s", e)
 
     def gen_tag(self) -> int:  # return uniq int
         self.__tag += 1
         return self.__tag
 
-    def pipe_socket(self, clientsock, serversock, tag=None):
+    def pipe_socket(self, clientsock, serversock, tag: int = None):
         assert clientsock not in self.channel, (clientsock, "already piped")
         self.input_list.append(clientsock)
         self.input_list.append(serversock)
-        self.channel[clientsock] = serversock
         self.channel[serversock] = clientsock
+        self.channel[clientsock] = serversock
         if tag:
-            self.socket_tags[serversock] = -tag
-            self.socket_tags[clientsock] = tag
+            self.socket_tags[clientsock] = tag # client side
+            self.socket_tags[serversock] = -tag # server side
+        else:
+            self.socket_tags[serversock] = 0
+            self.socket_tags[clientsock] = 0
 
     def unpipe_socket(self, clientsock) -> int:
         """
@@ -154,16 +201,10 @@ class TheServer:
         serversock = self.channel[clientsock]
         del self.channel[clientsock]
         del self.channel[serversock]
-        self.remove_from_list(self.input_list, clientsock)
-        self.remove_from_list(self.input_list, serversock)
+        remove_from_list(self.input_list, clientsock)
+        remove_from_list(self.input_list, serversock)
         self.socket_tags.pop(serversock, None)  # socket_tags
         return self.socket_tags.pop(clientsock, None)
-
-    def remove_from_list(self, _list, value):
-        try:
-            _list.remove(value)
-        except ValueError:
-            pass
 
     def on_accept(self):
         forward = create_socket(self.forward_to)
@@ -184,7 +225,7 @@ class TheServer:
         header = recvall(sock, 4)  # sock.recv(4)
         (tag, ) = struct.unpack("I", header)
         logger.info("on ssl accept: %s, tag: %d", addr, tag)
-        ssl_serversock = self.__tempsocks[tag]
+        ssl_serversock = self.__ssl_socks[tag]
 
         def wait_ssl_socket():
             ssock = self.sslctx.wrap_socket(sock, server_side=True)
@@ -214,6 +255,31 @@ class TheServer:
                 if 'PairRecordData' in pdata:
                     yield "... PairRecordData ..."
                 else:
+                    tag = self.socket_tags[self.s]
+                    if isinstance(pdata, dict):
+                        if "Service" in pdata:
+                            _service = pdata["Service"]
+                            logger.info("Service: %s", _service)
+                            self.__port_service_map[pdata['Port']] = _service
+                        elif pdata.get('MessageType') == "Connect":
+                            _port = pdata['PortNumber']
+                            port: int = socket.htons(_port)
+                            service_name = self.__port_service_map.get(port, "")
+                            logger.info("ServiceName: %r, Port: %d, tag: %d", service_name, port, tag)
+                            service_confs = {
+                                "com.apple.instruments.remoteserver": True,
+                                "com.apple.accessibility.axAuditDaemon.remoteserver": True,
+                                "com.apple.testmanagerd.lockdown": True,
+                                "com.apple.debugserver": True,
+                                "com.apple.instruments.remoteserver.DVTSecureSocketProxy": False,
+                                "com.apple.testmanagerd.lockdown.secure": False,
+                            }
+                            self.__skip_ssl_tags[tag] = service_confs.get(service_name, False)
+                            self.__tag_ports[tag] = port
+
+                            # patch
+                            # if port == 62078:
+                            #     self.__skip_ssl_tags[tag] = True
                     yield pprint.pformat(pdata)
                 yield hexdump.hexdump(data[rindex:], "return")
             except:
@@ -229,7 +295,6 @@ class TheServer:
             try:
                 pdata = plistlib.loads(plistdata)
                 yield pprint.pformat(pdata)
-                # yield hexdump.hexdump(data[rindex:], "return")
             except:
                 yield hexdump.hexdump(data[rindex:], "return")
             # while True:
@@ -269,12 +334,6 @@ class TheServer:
                 yield hexdump.hexdump(data[-max_length // 2:], "return")
             else:
                 yield hexdump.hexdump(data, "return")
-        # else:
-        #     try:
-        #         pdata = data.decode('utf-8')
-        #         print(pdata)
-        #     except UnicodeDecodeError:
-        #         hexdump.hexdump(data)
 
     def dump_data(self, data):
         if self.s not in self.socket_tags:
@@ -290,6 +349,9 @@ class TheServer:
 
         index = abs(tag)
 
+        if tag == 0:
+            return
+
         if isinstance(self.s, ssl.SSLSocket):  # secure tunnel
             print('\33[47m', end="")
         print(f' {index} '.center(50, direction), end="")
@@ -298,10 +360,6 @@ class TheServer:
         print(f"Length={len(data)} 0x{len(data):02X}")
         print("Time:", datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
 
-        # TODO
-        # if tag < 0:
-        #    print("Skip show receving data")
-        #    return
         if True:
             os.makedirs(self._data_directory, 0o755, exist_ok=True)
             fpath = os.path.join(self._data_directory, f"{index}.txt")
@@ -317,29 +375,20 @@ class TheServer:
             for line in self._iter_pretty_format_data(data):
                 print(line)
 
-        # else:
-        #    try:
-        #        pdata = data.decode('utf-8')
-        #        print(pdata)
-        #    except UnicodeDecodeError:
-        #        hexdump.hexdump(data)
-
         print('\33[0m', end="")
 
     def man_in_middle_ssl(self, clientsock, ssl_hello_data: bytes):
         serversock = self.channel[clientsock]
         tag = self.unpipe_socket(clientsock)
-
-        ssl_serversock = self.sslctx.wrap_socket(
-            serversock)
+        ssl_serversock = self.sslctx.wrap_socket(serversock)
         print("serversock secure ready, tag: {}".format(tag))
 
-        self.__tempsocks[tag] = ssl_serversock
+        self.__ssl_socks[tag] = ssl_serversock
 
         mim_clientsock = socket.create_connection(('localhost', 10443))
         mim_clientsock.sendall(struct.pack("I", tag))
 
-        hexdump.hexdump(ssl_hello_data[:1024])
+        # hexdump.hexdump(ssl_hello_data[:1024])
         mim_clientsock.sendall(ssl_hello_data)
         self.pipe_socket(clientsock, mim_clientsock)
 
@@ -348,11 +397,14 @@ class TheServer:
         data = self.data
 
         # Check SSL ClientHello message
+        tag = abs(self.socket_tags[self.s])
         if self.parse_ssl and is_ssl_data(data):
-            logger.info("Mock SSL-Server")
-            clientsock = self.s
-            self.man_in_middle_ssl(clientsock, data)
-            return
+            logger.info("Detect SSL Handshake")
+            if not self.__skip_ssl_tags[tag]:
+                logger.info("Start SSL Inspect PORT: %d", self.__tag_ports.get(tag, -1))
+                clientsock = self.s
+                self.man_in_middle_ssl(clientsock, data)
+                return
 
         # if b'PairRecordData' in data and b'DeviceCertificate' in data:
         #     print(".... PairRecordData ....")

@@ -289,6 +289,7 @@ class DTXService(PlistSocketProperty):
         payload = DTXPayload.build('_notifyOfPublishedCapabilities:', [capabilities])
         self.send_dtx_message(channel=0, payload=payload)
         self._drain_background()  # 开启接收线程
+        weakref.finalize(self, self._stop_event.set)
 
     def _next_message_id(self) -> int:
         self._last_message_id += 1
@@ -565,6 +566,10 @@ class DTXService(PlistSocketProperty):
                 except MuxError as e:
                     # logger.warning("unexpected error: %s", e)
                     break
+                except OSError:
+                    if self._stop_event.is_set():
+                        break
+                    raise
                 except:
                     if not self._stop_event.is_set():
                         raise
@@ -634,7 +639,6 @@ class ServiceInstruments(DTXService):
 
     def prepare(self):
         super().prepare()
-        self._finalizer = weakref.finalize(self, self.close)
 
     def app_launch(self,
                    bundle_id: str,

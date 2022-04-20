@@ -576,7 +576,7 @@ def cmd_savesslfile(args: argparse.Namespace):
     pathlib.Path(f"ssl/{d.udid}_all.pem").write_bytes(
         pr['HostPrivateKey']
         + pr['HostCertificate']
-        + pr['RootCertificate']
+        # + pr['RootCertificate']
     )
 
 

@@ -14,6 +14,7 @@ import re
 import shutil
 import ssl
 import sys
+import socket
 import tempfile
 import threading
 import time
@@ -92,7 +93,7 @@ class BaseDevice():
     @property
     def debug(self) -> bool:
         return logging.getLogger(LOG.main).level == logging.DEBUG
-    
+
     @debug.setter
     def debug(self, v: bool):
         # log setup
@@ -129,7 +130,7 @@ class BaseDevice():
     @property
     def udid(self) -> str:
         return self._udid
-    
+
     @property
     def devid(self) -> int:
         return self.info.device_id
@@ -139,7 +140,7 @@ class BaseDevice():
         if not self._pair_record:
             self.handshake()
         return self._pair_record
-    
+
     @pair_record.setter
     def pair_record(self, val: Optional[dict]):
         self._pair_record = val
@@ -232,7 +233,7 @@ class BaseDevice():
             pair_record['HostPrivateKey'] = priv_key_pem
             pair_record['EscrowBag'] = ret['EscrowBag']
             pair_record['WiFiMACAddress'] = wifi_address
-        
+
         self.usbmux.send_recv({
             "MessageType": "SavePairRecord",
             "PairRecordID": self.udid,
@@ -281,12 +282,10 @@ class BaseDevice():
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
-            _ssl: bool = False) -> PlistSocket:
-        # I really donot know why do this
-        # The following code convert port(0x1234) to port(0x3412)
-        _port = ((port & 0xff) << 8) | (port >> 8)
-        # logger.debug("port convert %s(%d) -> %s(%d)", hex(port), port,
-        #              hex(_port), _port)
+            _ssl: bool = False,
+            ssl_dial_only: bool = False) -> PlistSocket:
+        _port = socket.htons(port)
+        # Same as: ((port & 0xff) << 8) | (port >> 8)
         del (port)
 
         device_id = self.info.device_id
@@ -299,12 +298,14 @@ class BaseDevice():
             'ProgName': PROGRAM_NAME,
         }
         logger.debug("Send payload: %s", payload)
-        with set_socket_timeout(conn.get_socket, 5.0):
+        with set_socket_timeout(conn.get_socket, 10.0):
             data = conn.send_recv_packet(payload)
             self._usbmux._check(data)
             logger.debug("connected to port: %d", _port)
             if _ssl:
                 conn.switch_to_ssl(self.ssl_pemfile_path)
+            if ssl_dial_only:
+                conn.ssl_unwrap()
             return conn
 
     @contextlib.contextmanager
@@ -392,7 +393,7 @@ class BaseDevice():
             with self.create_session() as conn:
                 ret = conn.send_recv_packet(request)
                 return ret['Value']
-    
+
     def set_value(self, domain: str, key: str, value: typing.Any):
         request = {
             "Domain": domain,
@@ -452,7 +453,7 @@ class BaseDevice():
             "Label": PROGRAM_NAME,
         })
         return ret['Status']
-    
+
     def shutdown(self):
         conn = self.start_service("com.apple.mobile.diagnostics_relay")
         ret = conn.send_recv_packet({
@@ -482,7 +483,7 @@ class BaseDevice():
         ack = b'ping\x00'
         if ack != move_conn.recvall(len(ack)):
             raise ServiceError("ERROR: Crash logs could not be moved. Connection interrupted")
-        
+
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
@@ -515,7 +516,16 @@ class BaseDevice():
         _ssl = data.get(
             'EnableServiceSSL',
             False)
-        conn = self.create_inner_connection(data['Port'], _ssl=_ssl)
+
+        # These DTX based services only execute a SSL Handshake
+        # and then go back to sending unencrypted data right after the handshake.
+        ssl_dial_only = False
+        if name in ("com.apple.instruments.remoteserver",
+                    "com.apple.accessibility.axAuditDaemon.remoteserver",
+                    "com.apple.testmanagerd.lockdown",
+                    "com.apple.debugserver"):
+            ssl_dial_only = True
+        conn = self.create_inner_connection(data['Port'], _ssl=_ssl, ssl_dial_only=ssl_dial_only)
         conn.name = data['Service']
         return conn
 
@@ -524,7 +534,7 @@ class BaseDevice():
 
     def iter_screenshot(self) -> Iterator[Image.Image]:
         """ take screenshot infinite """
-        
+
         with self.start_service(LockdownService.MobileScreenshotr) as conn:
             version_exchange = conn.recv_packet()
             # Expect recv: ['DLMessageVersionExchange', 300, 0]
@@ -554,15 +564,15 @@ class BaseDevice():
     @property
     def name(self):
         return self.get_value("DeviceName", no_session=True)
-    
+
     @property
     def product_version(self) -> str:
         return self.get_value("ProductVersion", no_session=True)
-    
+
     @property
     def product_type(self) -> str:
         return self.get_value("ProductType", no_session=True)
-    
+
     def app_sync(self, bundle_id: str, command: str = "VendDocuments") -> Sync:
         # Change command(VendContainer -> VendDocuments)
         # According to https://github.com/GNOME/gvfs/commit/b8ad223b1e2fbe0aec24baeec224a76d91f4ca2f
@@ -609,7 +619,7 @@ class BaseDevice():
                 zf = zipfile.ZipFile(image_zip_path)
                 zf.extractall(tmpdir)
                 rootfiles = os.listdir(tmpdir)
-                
+
                 rootdirs = []
                 for fname in rootfiles:
                     if fname.startswith("_") or fname.startswith("."):
@@ -627,7 +637,7 @@ class BaseDevice():
                     yield os.path.join(tmpdir, rootdirs[0])
                 else:
                     raise RuntimeError("deviceSupport for {} not detected DeveloperDiskImage".format(version))
-                
+
     def _test_if_developer_mounted(self) -> bool:
         try:
             with self.create_session():
@@ -782,8 +792,6 @@ class BaseDevice():
                 LockdownService.TestmanagerdLockdownSecure)
         else:
             conn = self.start_service(LockdownService.TestmanagerdLockdown)
-            if isinstance(conn._sock, ssl.SSLSocket):
-                conn._sock = conn._dup_sock
         return DTXService(conn)
 
     def connect_instruments(self) -> ServiceInstruments:
@@ -793,11 +801,8 @@ class BaseDevice():
                 LockdownService.InstrumentsRemoteServerSecure)
         else:
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
-            # When SSL-handshake done, goback to original socket
-            if isinstance(conn._sock, ssl.SSLSocket):
-                conn._sock = conn._dup_sock
         return ServiceInstruments(conn)
-    
+
     @property
     def instruments(self) -> ServiceInstruments:
         return self.connect_instruments()
@@ -1091,7 +1096,7 @@ class BaseDevice():
             aux.append_obj(XCODE_VERSION)
             result = x1.call_message(x1_daemon_chan, identifier, aux)
             logger.debug("result: %s", result)
-        
+
         if "NSError" in str(result):
             raise RuntimeError("Xcode Invocation Failed: {}".format(result))
 

@@ -39,6 +39,7 @@ class SafeStreamSocket:
         """
         self._id = get_uniq_id()
         self._sock = None
+        self._dup_sock = None # keep original sock when switch_to_ssl
         self._name = None
 
         if isinstance(addr, socket.socket):
@@ -57,18 +58,17 @@ class SafeStreamSocket:
                 family = socket.AF_INET
             self._sock = socket.socket(family, socket.SOCK_STREAM)
             self._sock.connect(addr)
-        
-        self._sock_gclist = [self._sock]
 
-        def _cleanup(socks: typing.List[socket.socket]):
+        def _cleanup():
             _id = str(self.id)
             if self.name:
                 _id = self.name + ":" + str(self.id)
             logger.debug("CLOSE(%s)", _id)
-            for sock in socks:
-                sock.close()
+            self._sock.close()
+            if self._dup_sock:
+                self._dup_sock.close()
 
-        self._finalizer = weakref.finalize(self, _cleanup, self._sock_gclist)
+        self._finalizer = weakref.finalize(self, _cleanup)
     
     def close(self):
         self._finalizer()
@@ -105,15 +105,18 @@ class SafeStreamSocket:
         return buf
 
     def sendall(self, data: Union[bytes, bytearray]) -> int:
-        with set_socket_timeout(self._sock, 10):
-            return self._sock.sendall(data)
+        return self._sock.sendall(data)
+
+    def ssl_unwrap(self):
+        assert isinstance(self._sock, ssl.SSLSocket)
+        self._sock.close()
+        self._sock = self._dup_sock
+        self._dup_sock = None
 
     def switch_to_ssl(self, pemfile):
         """ wrap socket to SSLSocket """
         # logger.debug("Switch to ssl")
         assert os.path.isfile(pemfile)
-        self._dup_sock = self._sock.dup()
-        self._sock_gclist.append(self._dup_sock)
         
         # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
         context = ssl.SSLContext(ssl.PROTOCOL_TLS)
@@ -122,10 +125,11 @@ class SafeStreamSocket:
         except ssl.SSLError:
             # ignore: no ciphers can be selected.
             pass
+        self._dup_sock = self._sock.dup()
+
         context.load_cert_chain(pemfile, keyfile=pemfile)
         context.check_hostname = False
         ssock = context.wrap_socket(self._sock, server_hostname="iphone.localhost")
-        
         self._sock = ssock
 
     def __enter__(self):
@@ -207,8 +211,8 @@ class PlistSocket(SafeStreamSocket):
 class PlistSocketProperty:
     def __init__(self, psock: PlistSocket):
         self._psock = psock
+        self._finalizer = weakref.finalize(self, self._psock.close)
         self.prepare()
-        self._finalizer = weakref.finalize(self, self.psock.close)
     
     @property
     def psock(self) -> PlistSocket:
