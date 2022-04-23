@@ -304,8 +304,8 @@ class BaseDevice():
             logger.debug("connected to port: %d", _port)
             if _ssl:
                 conn.switch_to_ssl(self.ssl_pemfile_path)
-            if ssl_dial_only:
-                conn.ssl_unwrap()
+                if ssl_dial_only:
+                    conn.ssl_unwrap()
             return conn
 
     @contextlib.contextmanager
