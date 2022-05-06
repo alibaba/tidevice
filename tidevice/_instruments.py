@@ -398,7 +398,7 @@ class DTXService(PlistSocketProperty):
         self.psock.sendall(data)
         return _message_id
 
-    def recv_part_dtx_message(self) -> int:
+    def recv_part_dtx_message(self) -> typing.Optional[int]:
         """
         DTXMessage contains one or more fragmenets
         This fragments may received in different orders
