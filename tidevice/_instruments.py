@@ -288,6 +288,7 @@ class DTXService(PlistSocketProperty):
         }
         payload = DTXPayload.build('_notifyOfPublishedCapabilities:', [capabilities])
         self.send_dtx_message(channel=0, payload=payload)
+        self._dtx_message_pool = {}
         self._drain_background()  # 开启接收线程
         weakref.finalize(self, self._stop_event.set)
 
@@ -397,6 +398,39 @@ class DTXService(PlistSocketProperty):
         self.psock.sendall(data)
         return _message_id
 
+    def recv_part_dtx_message(self) -> int:
+        """
+        DTXMessage contains one or more fragmenets
+        This fragments may received in different orders
+
+        Returns:
+            None or message_id
+        """
+        data = self.psock.recvall(0x20)
+        h = DTXMessageHeader.parse(data)
+        if h.magic != 0x1F3D5B79:
+            raise MuxError("bad header magic: 0x%x\n" % h.magic)
+
+        if h.header_length != 0x20:
+            raise MuxError("header length expect 0x20, got 0x%x".format(
+                h.header_length))
+        
+        if h.fragment_id == 0:
+            # when reading multiple message fragments
+            # only the 0th fragment contains a message header
+            # but the 0th payload is empty
+            self._dtx_message_pool[h.message_id] = (h, bytearray())
+            if h.fragment_count > 1:
+                return None
+        _, payload = self._dtx_message_pool[h.message_id]
+        rawdata = self.psock.recvall(h.payload_length)
+        payload.extend(rawdata)
+        
+        if h.fragment_id == h.fragment_count - 1:
+            return h.message_id
+        else:
+            return None
+
     def recv_dtx_message(self) -> Tuple[Any, bytearray]:
         """
         前32个字节(两行) 为DTXMessage的头部 (包含了消息的类型和请求的channel)
@@ -475,37 +509,14 @@ class DTXService(PlistSocketProperty):
         00000010: 03 00 00 00 01 00 00 00  00 00 00 00 00 00 00 00  ................
         00000020: 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
         """
-        payload = bytearray()
-        mheader = None
-
         while True:
-            data = self.psock.recvall(0x20)
-            h = DTXMessageHeader.parse(data)
-            # print("frag:", fragment_id, fragment_count)
-            if h.magic != 0x1F3D5B79:
-                raise MuxError("bad header magic: 0x%x\n" % h.magic)
-
-            if h.header_length != 0x20:
-                raise MuxError("header length expect 0x20, got 0x%x".format(
-                    h.header_length))
-
-            if h.fragment_id == 0:
-                # when reading multiple message fragments
-                # only the 0th fragment contains a message header
-                # but the 0th payload is empty
-                mheader = h
-                if h.fragment_count > 1:
-                    continue
-
-            rawdata = self.psock.recvall(h.payload_length)
-            payload.extend(rawdata)
-
-            if h.fragment_id == h.fragment_count - 1:
-                break
-
-        assert mheader.conversation_index in [0, 1, 2]
-        assert mheader.expects_reply in [0, 1]
-        return (mheader, payload)
+            message_id = self.recv_part_dtx_message()
+            if message_id is None:
+                continue
+            mheader, payload = self._dtx_message_pool.pop(message_id)
+            assert mheader.conversation_index in [0, 1, 2]
+            assert mheader.expects_reply in [0, 1]
+            return (mheader, payload)
 
     def _call_handlers(self, event_name: Event, data: Any = None) -> bool:
         """
