@@ -722,7 +722,9 @@ class ServiceInstruments(DTXService):
         """
         def exefile2appinfo(exe_abspath: str, app_infos: List[dict]):
             for info in app_infos:
-                path = info['Path'] + "/" + info['CFBundleExecutable']
+                # info may not contain key "Path"
+                # https://github.com/alibaba/taobao-iphone-device/issues/61
+                path = info.get('Path', "") + "/" + info['CFBundleExecutable']
                 if path.startswith("/private"):
                     path = path[len("/private"):]
                 if exe_abspath == path:
