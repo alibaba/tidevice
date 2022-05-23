@@ -331,7 +331,7 @@ class Sync(PlistSocketProperty):
         if info.is_dir():
             raise MuxError("{} is a directory", path)
         if info.is_link():
-            path = info['LinkTarget']
+            path = info.st_linktarget
 
         with self._context_open(path, AFC.O_RDONLY) as fd:
             left_size = info.st_size
