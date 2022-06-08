@@ -361,8 +361,8 @@ See [DEVELOP](DEVELOP.md)
 Python code style(ZH): https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/python_style_rules/#comments
 
 ## Alternatives
-- https://github.com/danielpaulus/go-ios
-- Go implemented: https://github.com/electricbubble/gidevice
+- <https://github.com/danielpaulus/go-ios>
+- Go implemented: <https://github.com/electricbubble/gidevice>
 
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>

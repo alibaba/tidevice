@@ -91,15 +91,18 @@ def cmd_list(args: argparse.Namespace):
             print(info.udid)
         return
 
-    headers = ['UDID', 'NAME', 'MarketName', 'ProductVersion', "ConnType"]
-    keys = ["udid", "name", "market_name", "product_version", "conn_type"]
+    headers = ['UDID', 'SerialNumber', 'NAME', 'MarketName', 'ProductVersion', "ConnType"]
+    keys = ["udid", "serial", "name", "market_name", "product_version", "conn_type"]
     tabdata = []
     for dinfo in ds:
         udid, conn_type = dinfo.udid, dinfo.conn_type
         try:
             _d = Device(udid, um)
             name = _d.name
-            tabdata.append([udid, name, MODELS.get(_d.product_type, "-"), _d.product_version, conn_type])
+            values = _d.get_value(no_session=True)
+            serial = values['SerialNumber']
+            tabdata.append([udid, serial, name, MODELS.get(_d.product_type, "-"), _d.product_version, conn_type])
+
         except MuxError:
             name = ""
     if _json:
