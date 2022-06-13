@@ -99,8 +99,7 @@ def cmd_list(args: argparse.Namespace):
         try:
             _d = Device(udid, um)
             name = _d.name
-            values = _d.get_value(no_session=True)
-            serial = values['SerialNumber']
+            serial = _d.get_value("SerialNumber")
             tabdata.append([udid, serial, name, MODELS.get(_d.product_type, "-"), _d.product_version, conn_type])
 
         except MuxError:
