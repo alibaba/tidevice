@@ -359,10 +359,20 @@ class Sync(PlistSocketProperty):
         if isinstance(dst, str):
             dst = pathlib.Path(dst)
 
-        if src.as_posix() == "/" or self.stat(src).is_dir():
+        try:
+            finfo = self.stat(src)    
+        except MuxError as e:
+            logger.warning("Stat %s error: %s", src, e)
+            return
+
+        if src.as_posix() == "/" or finfo.is_dir():
             dst.mkdir(exist_ok=True)
             for fname in self.listdir(src):
-                self.pull(src.joinpath(fname), dst.joinpath(fname))
+                self.pull(src.joinpath(fname), dst.joinpath(fname), remove=remove)
+            try:
+                self.rmdir(src)
+            except:
+                pass
         else:
             if dst.is_dir():
                 dst = dst.joinpath(src.name)
@@ -370,11 +380,8 @@ class Sync(PlistSocketProperty):
             with dst.open("wb") as f:
                 for chunk in self.iter_content(src):
                     f.write(chunk)
-        if remove:
-            try:
-                self.rmtree(src)
-            except:
-                pass
+            if remove:
+                self.remove(src)
 
     def pull_content(self, path: str) -> bytearray:
         buf = bytearray()

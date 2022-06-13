@@ -781,9 +781,9 @@ _commands = [
     dict(action=cmd_crashreport,
          command="crashreport",
          flags=[
-             dict(args=['--list'], action='store_true', help='list all crash files'),
-             dict(args=['--keep'], action='store_true', help="copy but do not remove crash reports from device"),
-             dict(args=['--clear'], action='store_true', help='clear crash files'),
+             dict(args=['-l', '--list'], action='store_true', help='list all crash files'),
+             dict(args=['-k', '--keep'], action='store_true', help="copy but do not remove crash reports from device"),
+             dict(args=['-c', '--clear'], action='store_true', help='clear crash files'),
              dict(args=['output_directory'], nargs="?", help='The output dir to save crash logs synced from device'),
          ],
          help="crash log tools"),
