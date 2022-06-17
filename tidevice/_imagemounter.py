@@ -11,7 +11,7 @@ from typing import List
 import retry
 import requests
 
-from ._safe_socket import PlistSocketProperty
+from ._safe_socket import PlistSocketProxy
 from ._utils import get_app_dir, logger
 from .exceptions import MuxError, MuxServiceError
 
@@ -88,7 +88,7 @@ def cache_developer_image(version: str) -> str:
     return image_zip_path
 
 
-class ImageMounter(PlistSocketProperty):
+class ImageMounter(PlistSocketProxy):
     SERVICE_NAME = "com.apple.mobile.mobile_image_mounter"
 
     def prepare(self):
@@ -101,7 +101,7 @@ class ImageMounter(PlistSocketProperty):
         """
         Check image signature
         """
-        ret = self.psock.send_recv_packet({
+        ret = self.send_recv_packet({
             "Command": "LookupImage",
             "ImageType": image_type,
         })
@@ -144,7 +144,7 @@ class ImageMounter(PlistSocketProperty):
                 signature_content: bytes,
                 image_type: str = "Developer"):
 
-        ret = self.psock.send_recv_packet({
+        ret = self.send_recv_packet({
             "Command": "ReceiveBytes",
             "ImageSignature": signature_content,
             "ImageSize": image_size,

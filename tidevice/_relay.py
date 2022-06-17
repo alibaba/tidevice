@@ -15,7 +15,7 @@ from tornado.tcpserver import TCPServer
 
 from ._device import Device
 from ._hexdump import hexdump
-from ._safe_socket import PlistSocket
+from ._safe_socket import PlistSocketProxy
 from .exceptions import MuxReplyError
 
 
@@ -51,7 +51,7 @@ class RelayTCPServer(TCPServer):
         io_loop.add_callback(self._pipe_stream, _in, out, plconn)
         io_loop.add_callback(self._pipe_stream, out, _in, plconn)
 
-    async def _pipe_stream(self, _in: IOStream, out: IOStream, plconn: PlistSocket):
+    async def _pipe_stream(self, _in: IOStream, out: IOStream, plconn: PlistSocketProxy):
         while not _in.closed():
             try:
                 data = await _in.read_bytes(10240, partial=True)

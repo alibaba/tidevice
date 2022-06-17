@@ -422,7 +422,7 @@ def cmd_syslog(args: argparse.Namespace):
     s = d.start_service("com.apple.syslog_relay")
     try:
         while True:
-            text = s.recv().decode('utf-8')
+            text = s.psock.recv().decode('utf-8')
             print(text, end='', flush=True)
     except (BrokenPipeError, IOError):
         # Python flushes standard streams on exit; redirect remaining output

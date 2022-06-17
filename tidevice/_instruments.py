@@ -29,7 +29,7 @@ from retry import retry
 from . import bplist
 from . import struct2 as ct
 from ._proto import LOG, InstrumentsService
-from ._safe_socket import PlistSocketProperty
+from ._safe_socket import PlistSocketProxy
 from .exceptions import MuxError, ServiceError
 
 logger = logging.getLogger(LOG.xctest)
@@ -267,7 +267,7 @@ class AUXMessageBuffer(object):
     #     else:
     #         self.append_obj(v)
 
-class DTXService(PlistSocketProperty):
+class DTXService(PlistSocketProxy):
 
     def prepare(self):
         super().prepare()

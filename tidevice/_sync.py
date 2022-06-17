@@ -16,7 +16,7 @@ from typing import Iterator, List, Union
 from . import bplist
 from . import struct2 as ct
 from ._proto import *
-from ._safe_socket import PlistSocketProperty
+from ._safe_socket import PlistSocketProxy
 from ._utils import pathjoin
 from .exceptions import MuxError, MuxServiceError
 
@@ -38,7 +38,7 @@ FHeader = ct.Struct("FHeader",
 logger = logging.getLogger(PROGRAM_NAME)
 
 
-class Sync(PlistSocketProperty):
+class Sync(PlistSocketProxy):
     def prepare(self):
         self.__tag = -1
 

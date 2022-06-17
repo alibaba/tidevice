@@ -22,13 +22,13 @@ import logging
 from typing import Optional
 
 from ._proto import LOG
-from ._safe_socket import PlistSocketProperty
+from ._safe_socket import PlistSocketProxy
 from .exceptions import ServiceError
 
 logger = logging.getLogger(LOG.main)
 
 
-class Installation(PlistSocketProperty):
+class Installation(PlistSocketProxy):
     SERVICE_NAME = "com.apple.mobile.installation_proxy"
 
     def install(self, bundle_id: str, target_path: str):

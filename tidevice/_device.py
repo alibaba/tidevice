@@ -283,7 +283,7 @@ class BaseDevice():
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
             _ssl: bool = False,
-            ssl_dial_only: bool = False) -> PlistSocket:
+            ssl_dial_only: bool = False) -> PlistSocketProxy:
         _port = socket.htons(port)
         # Same as: ((port & 0xff) << 8) | (port >> 8)
         del (port)
@@ -303,17 +303,21 @@ class BaseDevice():
             self._usbmux._check(data)
             logger.debug("connected to port: %d", _port)
             if _ssl:
-                conn.switch_to_ssl(self.ssl_pemfile_path)
+                psock = conn.psock
+                psock.switch_to_ssl(self.ssl_pemfile_path)
                 if ssl_dial_only:
-                    conn.ssl_unwrap()
+                    psock.ssl_unwrap()
             return conn
 
     @contextlib.contextmanager
-    def create_session(self) -> PlistSocket:
+    def create_session(self) -> PlistSocketProxy:
         """
         Create session inside SSLContext
         """
-        with self.create_inner_connection() as s:  # 62078=0xf27e
+        with self.create_inner_connection() as _s:  # 62078=0xf27e
+            s: PlistSocketProxy = _s
+            del(_s)
+
             data = s.send_recv_packet({"Request": "QueryType"})
             # Expect: {'Request': 'QueryType', 'Type': 'com.apple.mobile.lockdown'}
             assert data['Type'] == LockdownService.MobileLockdown
@@ -351,7 +355,7 @@ class BaseDevice():
             if data['EnableSessionSSL']:
                 # tempfile.NamedTemporaryFile is not working well on windows
                 # See: https://stackoverflow.com/questions/6416782/what-is-namedtemporaryfile-useful-for-on-windows
-                s.switch_to_ssl(self.ssl_pemfile_path)
+                s.psock.switch_to_ssl(self.ssl_pemfile_path)
 
             yield s
 
@@ -481,13 +485,13 @@ class BaseDevice():
         # read "ping" message which indicates the crash logs have been moved to a safe harbor
         move_conn = self.start_service(LockdownService.CRASH_REPORT_MOVER_SERVICE)
         ack = b'ping\x00'
-        if ack != move_conn.recvall(len(ack)):
+        if ack != move_conn.psock.recvall(len(ack)):
             raise ServiceError("ERROR: Crash logs could not be moved. Connection interrupted")
 
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
-    def start_service(self, name: str) -> PlistSocket:
+    def start_service(self, name: str) -> PlistSocketProxy:
         try:
             return self._unsafe_start_service(name)
         except MuxServiceError:
@@ -496,8 +500,11 @@ class BaseDevice():
             time.sleep(.5)
             return self._unsafe_start_service(name)
 
-    def _unsafe_start_service(self, name: str) -> PlistSocket:
-        with self.create_session() as s:
+    def _unsafe_start_service(self, name: str) -> PlistSocketProxy:
+        with self.create_session() as _s:
+            s: PlistSocketProxy = _s
+            del(_s)
+
             data = s.send_recv_packet({
                 "Request": "StartService",
                 "Service": name,
@@ -535,31 +542,31 @@ class BaseDevice():
     def iter_screenshot(self) -> Iterator[Image.Image]:
         """ take screenshot infinite """
 
-        with self.start_service(LockdownService.MobileScreenshotr) as conn:
-            version_exchange = conn.recv_packet()
-            # Expect recv: ['DLMessageVersionExchange', 300, 0]
+        conn = self.start_service(LockdownService.MobileScreenshotr)
+        version_exchange = conn.recv_packet()
+        # Expect recv: ['DLMessageVersionExchange', 300, 0]
 
+        data = conn.send_recv_packet([
+            'DLMessageVersionExchange', 'DLVersionsOk', version_exchange[1]
+        ])
+        # Expect recv: ['DLMessageDeviceReady']
+        assert data[0] == 'DLMessageDeviceReady'
+
+        while True:
+            # code will be blocked here until next(..) called
             data = conn.send_recv_packet([
-                'DLMessageVersionExchange', 'DLVersionsOk', version_exchange[1]
+                'DLMessageProcessMessage', {
+                    'MessageType': 'ScreenShotRequest'
+                }
             ])
-            # Expect recv: ['DLMessageDeviceReady']
-            assert data[0] == 'DLMessageDeviceReady'
+            # Expect recv: ['DLMessageProcessMessage', {'MessageType': 'ScreenShotReply', ScreenShotData': b'\x89PNG\r\n\x...'}]
+            assert len(data) == 2 and data[0] == 'DLMessageProcessMessage'
+            assert isinstance(data[1], dict)
+            assert data[1]['MessageType'] == "ScreenShotReply"
 
-            while True:
-                # code will be blocked here until next(..) called
-                data = conn.send_recv_packet([
-                    'DLMessageProcessMessage', {
-                        'MessageType': 'ScreenShotRequest'
-                    }
-                ])
-                # Expect recv: ['DLMessageProcessMessage', {'MessageType': 'ScreenShotReply', ScreenShotData': b'\x89PNG\r\n\x...'}]
-                assert len(data) == 2 and data[0] == 'DLMessageProcessMessage'
-                assert isinstance(data[1], dict)
-                assert data[1]['MessageType'] == "ScreenShotReply"
+            png_data = data[1]['ScreenShotData']
 
-                png_data = data[1]['ScreenShotData']
-
-                yield pil_imread(png_data)
+            yield pil_imread(png_data)
 
     @property
     def name(self):
@@ -813,7 +820,7 @@ class BaseDevice():
                     env: dict = {},
                     target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
-                    quit_event: threading.Event = None) -> typing.Tuple[PlistSocket, int]:  # pid
+                    quit_event: threading.Event = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
 
         logger = logging.getLogger(LOG.xctest)
 

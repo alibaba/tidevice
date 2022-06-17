@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from ._types import DeviceInfo, ConnectionType
 from ._proto import PROGRAM_NAME, UsbmuxReplyCode
-from ._safe_socket import PlistSocket
+from ._safe_socket import PlistSocket, PlistSocketProxy
 from .exceptions import * # pragma warning disables S2208
 
 
@@ -40,16 +40,17 @@ class Usbmux:
         self.__tag += 1
         return self.__tag
 
-    def create_connection(self) -> PlistSocket:
-        return PlistSocket(self.__address, self._next_tag())
+    def create_connection(self) -> PlistSocketProxy:
+        psock = PlistSocket(self.__address, self._next_tag())
+        return PlistSocketProxy(psock)
 
     def send_recv(self, payload: dict, timeout: float = None) -> dict:
-        with self.create_connection() as s:
-            s.get_socket().settimeout(timeout)
-            s.send_packet(payload)
-            recv_data = s.recv_packet()
-            self._check(recv_data)
-            return recv_data
+        s = self.create_connection()
+        s.get_socket().settimeout(timeout)
+        s.send_packet(payload)
+        recv_data = s.recv_packet()
+        self._check(recv_data)
+        return recv_data
 
     def device_list(self) -> typing.List[DeviceInfo]:
         """

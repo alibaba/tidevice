@@ -2,7 +2,7 @@
 # codeskyblue 2020/06/03
 #
 
-__all__ = ['SafeStreamSocket', 'PlistSocket']
+__all__ = ['SafeStreamSocket', 'PlistSocket', 'PlistSocketProxy']
 
 import logging
 import os
@@ -202,15 +202,16 @@ class PlistSocket(SafeStreamSocket):
             logger.debug("RECV(%d): %s", self.id, payload)
         return payload
 
-    def send_recv_packet(self, payload: dict, timeout: float = 10.0) -> dict:
-        with set_socket_timeout(self.get_socket(), timeout):
-            self.send_packet(payload)
-            return self.recv_packet()
 
+class PlistSocketProxy:
+    def __init__(self, psock: typing.Union[PlistSocket, "PlistSocketProxy"]):
+        if isinstance(psock, PlistSocketProxy):
+            self._psock = psock._psock
+            psock._finalizer.detach()
+        else:
+            assert isinstance(psock, PlistSocket)
+            self._psock = psock
 
-class PlistSocketProperty:
-    def __init__(self, psock: PlistSocket):
-        self._psock = psock
         self._finalizer = weakref.finalize(self, self._psock.close)
         self.prepare()
     
@@ -218,8 +219,19 @@ class PlistSocketProperty:
     def psock(self) -> PlistSocket:
         return self._psock
     
+    @property
+    def name(self) -> str:
+        return self.psock.name
+    
+    @name.setter
+    def name(self, new_name: str):
+        self.psock.name = new_name
+    
     def prepare(self):
         pass
+
+    def get_socket(self) -> socket.socket:
+        return self.psock.get_socket()
 
     def send_packet(self, payload: dict, message_type: int = 8):
         return self.psock.send_packet(payload, message_type)
@@ -227,6 +239,17 @@ class PlistSocketProperty:
     def recv_packet(self, header_size=None) -> dict:
         return self.psock.recv_packet(header_size)
     
+    def send_recv_packet(self, payload: dict, timeout: float = 10.0) -> dict:
+        with set_socket_timeout(self.psock.get_socket(), timeout):
+            self.send_packet(payload)
+            return self.recv_packet()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def close(self):
         self._finalizer()
     
