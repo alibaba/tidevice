@@ -16,3 +16,4 @@ def test_get_infoplist(wda_filepath: str):
     data = ir.get_mobileprovision()
     assert "Version" in data
     assert data['Version'] == 1
+

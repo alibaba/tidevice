@@ -1,20 +1,24 @@
 # coding: utf-8
 # created: codeskyblue 2020/06
 
+import logging
 import os
 import platform
 import plistlib
 import pprint
+import socket
 import sys
 import typing
 import uuid
 from typing import Optional, Union
 
 from ._types import DeviceInfo, ConnectionType
-from ._proto import PROGRAM_NAME, UsbmuxReplyCode
+from ._proto import PROGRAM_NAME, UsbmuxReplyCode, LOG
 from ._safe_socket import PlistSocket, PlistSocketProxy
 from .exceptions import * # pragma warning disables S2208
 
+
+logger = logging.getLogger(LOG.main)
 
 class Usbmux:
     def __init__(self, address: Optional[Union[str, tuple]] = None):
@@ -24,7 +28,7 @@ class Usbmux:
             elif os.name == "nt":  # windows
                 address = ('127.0.0.1', 27015)
             else:
-                raise EnvironmentError("Unsupported system:", sys.platform)
+                raise EnvironmentError("Unsupported os.name", os.name)
 
         self.__address = address
         self.__tag = 0
@@ -46,11 +50,9 @@ class Usbmux:
 
     def send_recv(self, payload: dict, timeout: float = None) -> dict:
         s = self.create_connection()
-        s.get_socket().settimeout(timeout)
-        s.send_packet(payload)
-        recv_data = s.recv_packet()
-        self._check(recv_data)
-        return recv_data
+        data = s.send_recv_packet(payload, timeout)
+        self._check(data)
+        return data
 
     def device_list(self) -> typing.List[DeviceInfo]:
         """
@@ -88,7 +90,7 @@ class Usbmux:
             result[info.udid] = info
         return list(result.values())
 
-    def device_udid_list(self) -> list:
+    def device_udid_list(self) -> typing.List[str]:
         return [d.udid for d in self.device_list()]
 
     def _check(self, data: dict):
@@ -133,3 +135,24 @@ class Usbmux:
             while True:
                 data = s.recv_packet(header_size=16)
                 yield data
+
+    def connect_device_port(self, devid: int, port: int) -> PlistSocketProxy:
+        """
+        Create connection to mobile phone
+        """
+        _port = socket.htons(port)
+        # Same as: ((port & 0xff) << 8) | (port >> 8)
+        del (port)
+        
+        conn = self.create_connection()
+        payload = {
+            'DeviceID': devid,  # Required
+            'MessageType': 'Connect',  # Required
+            'PortNumber': _port,  # Required
+            'ProgName': PROGRAM_NAME,
+        }
+        logger.debug("Send payload: %s", payload)
+        data = conn.send_recv_packet(payload)
+        self._check(data)
+        logger.debug("connected to port: %d", _port)
+        return conn

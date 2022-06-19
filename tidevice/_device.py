@@ -114,8 +114,10 @@ class BaseDevice():
                 if d.udid == self._udid:
                     self._info = d
         else:
-            if len(devices) != 1:
-                raise MuxError("Device is not present or multi devices connected")
+            if len(devices) == 0:
+                raise MuxError("No device connected")
+            elif len(devices) > 1:
+                raise MuxError("More then one device connected")
             _d = devices[0]
             self._udid = _d.udid
             self._info = _d
@@ -284,30 +286,15 @@ class BaseDevice():
             port: int = LOCKDOWN_PORT,  # 0xf27e,
             _ssl: bool = False,
             ssl_dial_only: bool = False) -> PlistSocketProxy:
-        _port = socket.htons(port)
-        # Same as: ((port & 0xff) << 8) | (port >> 8)
-        del (port)
-
         device_id = self.info.device_id
-        conn = self._usbmux.create_connection()
-        payload = {
-            # 'BundleID': 'com.apple.iTunes',
-            'DeviceID': device_id,  # Required
-            'MessageType': 'Connect',  # Required
-            'PortNumber': _port,  # Required
-            'ProgName': PROGRAM_NAME,
-        }
-        logger.debug("Send payload: %s", payload)
-        with set_socket_timeout(conn.get_socket, 10.0):
-            data = conn.send_recv_packet(payload)
-            self._usbmux._check(data)
-            logger.debug("connected to port: %d", _port)
-            if _ssl:
+        conn = self._usbmux.connect_device_port(device_id, port)
+        if _ssl:
+            with set_socket_timeout(conn.get_socket, 10.0):
                 psock = conn.psock
                 psock.switch_to_ssl(self.ssl_pemfile_path)
                 if ssl_dial_only:
                     psock.ssl_unwrap()
-            return conn
+        return conn
 
     @contextlib.contextmanager
     def create_session(self) -> PlistSocketProxy:
