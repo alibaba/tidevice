@@ -38,7 +38,7 @@ class RelayTCPServer(TCPServer):
         d._info = None # Force to refresh devId
         try:
             plconn = d.create_inner_connection(self.__port)
-            asock = IOStream(plconn._sock)
+            asock = IOStream(plconn.get_socket())
             self._pipe_twoway(asock, stream, plconn)
 
             self.__names[stream] = address

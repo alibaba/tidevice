@@ -50,7 +50,7 @@ class UsbmuxHTTPConnection(httplib.HTTPConnection, object):
         _device = Device(udid)
         # _device = _usbmux.device(udid)
         conn = _device.create_inner_connection(int(port))
-        self.sock = conn._sock
+        self.sock = conn.get_socket()
         self.sock.settimeout(self.timeout)
 
 
