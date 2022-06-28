@@ -14,6 +14,7 @@ Command line tool to communicate with iOS device, support the following function
 - launch and kill app
 - list installed app info
 - retrieve performance data
+- retrieve energy data
 - simulate run xctest, eg: WebDriverAgent
 - file operation
 - crash log operation
@@ -302,6 +303,13 @@ screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x50
 fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
 cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
 memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+```
+
+### Energy
+How to use in command line
+```bash
+$ tidevice energy com.example.demo
+{"energy.overhead": 490.0, "kIDEGaugeSecondsSinceInitialQueryKey": 1209, "energy.version": 1, "energy.gpu.cost": 0, "energy.cpu.cost": 62.15080582703523, "energy.networkning.overhead": 500, "energy.appstate.cost": 8, "energy.location.overhead": 0, "energy.thermalstate.cost": 0, "energy.networking.cost": 501.341030606293, "energy.cost": 767.8212481980341, "energy.display.cost": 214.3294117647059, "energy.cpu.overhead": 0, "energy.location.cost": 0, "energy.gpu.overhead": 0, "energy.appstate.overhead": 0, "energy.display.overhead": 0, "energy.inducedthermalstate.cost": -1}
 ```
 
 Example with python

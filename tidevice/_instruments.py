@@ -936,7 +936,20 @@ class ServiceInstruments(DTXService):
             # aux = AUXMessageBuffer()
             # aux.append_obj(channel_id)
             # self.send_dtx_message(channel_id, DTXPayload.build('_channelCanceled:', aux))
-            
+
+    def start_energy_sampling(self, pid: int):
+        ch_network = InstrumentsService.XcodeEnergyStatistics
+        return self.call_message(ch_network, 'startSamplingForPIDs:', [{pid}])
+
+    def stop_energy_sampling(self, pid: int):
+        ch_network = InstrumentsService.XcodeEnergyStatistics
+        return self.call_message(ch_network, 'stopSamplingForPIDs:', [{pid}])
+
+    def get_process_energy_stats(self, pid: int) -> Optional[Iterator[dict]]:
+        ch_network = InstrumentsService.XcodeEnergyStatistics
+        args = [{}, {pid}]
+        ret = self.call_message(ch_network, 'sampleAttributes:forPIDs:', args)
+        return ret.get(pid)
 
     def start_network_sampling(self, pid: int):
         ch_network = 'com.apple.xcode.debug-gauge-data-providers.NetworkStatistics'
