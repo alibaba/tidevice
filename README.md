@@ -336,6 +336,7 @@ memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
 
 ```bash
 # 功耗采集
+# 每一秒打印一行JSON，至于里面什么单位不太懂
 $ tidevice energy com.example.demo
 {"energy.overhead": 490.0, "kIDEGaugeSecondsSinceInitialQueryKey": 1209, "energy.version": 1, "energy.gpu.cost": 0, "energy.cpu.cost": 62.15080582703523, "energy.networkning.overhead": 500, "energy.appstate.cost": 8, "energy.location.overhead": 0, "energy.thermalstate.cost": 0, "energy.networking.cost": 501.341030606293, "energy.cost": 767.8212481980341, "energy.display.cost": 214.3294117647059, "energy.cpu.overhead": 0, "energy.location.cost": 0, "energy.gpu.overhead": 0, "energy.appstate.overhead": 0, "energy.display.overhead": 0, "energy.inducedthermalstate.cost": -1}
 ```

@@ -22,6 +22,7 @@ from typing import Optional, Union
 import requests
 from logzero import setup_logger
 from tabulate import tabulate
+from loguru import logger as ulogger
 
 from ._device import Device
 from ._imagemounter import cache_developer_image
@@ -39,6 +40,8 @@ from .exceptions import MuxError, MuxServiceError, ServiceError
 um: Usbmux = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
 
+
+ulogger.disable(PROGRAM_NAME)
 
 def _complete_udid(udid: Optional[str] = None) -> str:
     infos = um.device_list()

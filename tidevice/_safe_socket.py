@@ -19,15 +19,27 @@ from ._proto import PROGRAM_NAME
 from ._utils import set_socket_timeout
 from .exceptions import *
 
-logger = logging.getLogger(PROGRAM_NAME)
+from loguru import logger
+# logger = logging.getLogger(PROGRAM_NAME)
 
 _n = [0]
 _nlock = threading.Lock()
+_id_numbers = []
 
-def get_uniq_id() -> int:
+def acquire_uid() -> int:
     with _nlock:
         _n[0] += 1
+        _id_numbers.append(_n[0])
         return _n[0]
+
+
+def release_uid(id: int):
+    try:
+        _id_numbers.remove(id)
+    except ValueError:
+        pass
+    logger.debug("Activate socket count {}", len(_id_numbers))
+    
 
 
 class SafeStreamSocket:
@@ -37,7 +49,7 @@ class SafeStreamSocket:
         Args:
             addr: can be /var/run/usbmuxd or (localhost, 27015)
         """
-        self._id = get_uniq_id()
+        self._id = acquire_uid()
         self._sock = None
         self._dup_sock = None # keep original sock when switch_to_ssl
         self._name = None
@@ -59,17 +71,14 @@ class SafeStreamSocket:
             self._sock = socket.socket(family, socket.SOCK_STREAM)
             self._sock.connect(addr)
 
-        def _cleanup():
-            _id = str(self.id)
-            if self.name:
-                _id = self.name + ":" + str(self.id)
-            logger.debug("CLOSE(%s)", _id)
-            self._sock.close()
-            if self._dup_sock:
-                self._dup_sock.close()
-
-        self._finalizer = weakref.finalize(self, _cleanup)
+        self._finalizer = weakref.finalize(self, self._cleanup)
     
+    def _cleanup(self):
+        release_uid(self.id)
+        self._sock.close()
+        if self._dup_sock:
+            self._dup_sock.close()
+
     def close(self):
         self._finalizer()
         
@@ -166,9 +175,9 @@ class PlistSocket(SafeStreamSocket):
             tag: int
         """
         #if self.is_secure():
-        #    logger.debug(secure_text + " send: %s", payload)
+        #    logger.debug(secure_text + " send: {}", payload)
         #else:
-        logger.debug("SEND(%d): %s", self.id, payload)
+        logger.debug("SEND({}): {}", self.id, payload)
 
         body_data = plistlib.dumps(payload)
         if self._first:  # first package
@@ -196,10 +205,10 @@ class PlistSocket(SafeStreamSocket):
             logger.debug("Recv pair record data ...")
         else:
             # if self.is_secure():
-            #    logger.debug(secure_text + " recv" + Color.END + ": %s",
+            #    logger.debug(secure_text + " recv" + Color.END + ": {}",
             #                 payload)
             # else:
-            logger.debug("RECV(%d): %s", self.id, payload)
+            logger.debug("RECV({}): {}", self.id, payload)
         return payload
 
 

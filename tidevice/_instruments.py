@@ -945,7 +945,31 @@ class ServiceInstruments(DTXService):
         ch_network = InstrumentsService.XcodeEnergyStatistics
         return self.call_message(ch_network, 'stopSamplingForPIDs:', [{pid}])
 
-    def get_process_energy_stats(self, pid: int) -> Optional[Iterator[dict]]:
+    def get_process_energy_stats(self, pid: int) -> Optional[dict]:
+        """
+        Returns dict:
+            example:
+            {
+                "energy.overhead": -10,
+                "kIDEGaugeSecondsSinceInitialQueryKey": 10,
+                "energy.version": 1,
+                "energy.gpu.cost": 0,
+                "energy.cpu.cost": 0.10964105931592821,
+                "energy.networkning.overhead": 0,
+                "energy.appstate.cost": 8,
+                "energy.location.overhead": 0,
+                "energy.thermalstate.cost": 0,
+                "energy.networking.cost": 0,
+                "energy.cost": -9.890358940684072,
+                "energy.display.cost": 0,
+                "energy.cpu.overhead": 0,
+                "energy.location.cost": 0,
+                "energy.gpu.overhead": 0,
+                "energy.appstate.overhead": 0,
+                "energy.display.overhead": 0,
+                "energy.inducedthermalstate.cost": -1
+            }
+        """
         ch_network = InstrumentsService.XcodeEnergyStatistics
         args = [{}, {pid}]
         ret = self.call_message(ch_network, 'sampleAttributes:forPIDs:', args)
@@ -959,7 +983,7 @@ class ServiceInstruments(DTXService):
         ch_network = 'com.apple.xcode.debug-gauge-data-providers.NetworkStatistics'
         return self.call_message(ch_network, 'stopSamplingForPIDs:', [{pid}])
 
-    def get_process_network_stats(self, pid: int) -> Optional[Iterator[dict]]:
+    def get_process_network_stats(self, pid: int) -> Optional[dict]:
         """
         经测试数据始终不是很准，用safari测试，每次刷新图片的时候，rx.bytes总是不动
         """

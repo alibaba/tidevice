@@ -14,7 +14,11 @@ jobs:
         python-version: 3.7
     - name: Install pypa/build
       run: >-
-        python3 -m pip install wheel
+        python3 -m pip install wheel pytest
+    - name: Test
+      run: >-
+        python3 -m pip install -e .
+        python3 -m pytest -v tests/
     - name: Build targz and wheel
       run: >-
         python3 setup.py sdist bdist_wheel
