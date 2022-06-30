@@ -39,6 +39,9 @@ Parse Plist example:
         pl = load(fp)
     print(pl["aKey"])
 """
+
+# flake8: noqa
+
 __all__ = [
     "readPlist", "writePlist", "readPlistFromBytes", "writePlistToBytes",
     "Data", "InvalidFileException", "FMT_XML", "FMT_BINARY",
