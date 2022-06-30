@@ -772,7 +772,7 @@ class BaseDevice():
         print("DONE.")
 
         print("Installing {!r} {!r}".format(bundle_id, short_version))
-        self.installation.install(bundle_id, target_path)
+        return self.installation.install(bundle_id, target_path)
 
     def app_uninstall(self, bundle_id: str) -> bool:
         """
