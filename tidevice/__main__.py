@@ -360,7 +360,42 @@ def cmd_battery(args: argparse.Namespace):
     if args.json:
         _print_json(power_info)
     else:
-        pprint(power_info)
+        if power_info['Status'] != "Success":
+            pprint(power_info)
+            return
+        # dump power info
+        info = power_info['Diagnostics']['IORegistry']
+        indexes = (
+            ('CurrentCapacity', '当前电量', '%'),
+            ('CycleCount', '充电次数', '次'),
+            ('AbsoluteCapacity', '当前电量', 'mAh'),
+            ('NominalChargeCapacity', '实际容量', 'mAh'),
+            ('DesignCapacity', '设计容量', 'mAh'),
+            ('NominalChargeCapacity', '电池寿命', lambda cap: '{}%'.format(round(cap / info['DesignCapacity'] * 100))),
+            ('Serial', '序列号', ''),
+            ('Temperature', '电池温度', '/100℃'),
+            ('Voltage', '当前电压', 'mV'),
+            ('BootVoltage', '开机电压', 'mV'),
+            (('AdapterDetails', 'Watts'), '充电器功率', 'W'),
+            (('AdapterDetails', 'Voltage'), '充电器电压', 'mV'),
+            ('InstantAmperage', '当前电流', 'mA'),
+            ('UpdateTime', '更新时间', lambda v: datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        # 数据一般20s更新一次
+
+        for keypath, cn_name, unit in indexes:
+            value = info
+            if isinstance(keypath, str):
+                value = info[keypath]
+            else:
+                value = info
+                for key in keypath:
+                    value = value[key]
+            if callable(unit):
+                value = unit(value)
+                unit = ""
+            print("{:10s}{}{}".format(cn_name, value, unit))
+
 
 def cmd_crashreport(args: argparse.Namespace):
     d = _udid2device(args.udid)
