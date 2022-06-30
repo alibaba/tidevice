@@ -309,6 +309,20 @@ def cmd_applist(args: argparse.Namespace):
         #     (bundle_path, bundle_id, info['DisplayName'],
         #         info.get('Version', ''), info['Type'])))
 
+def cmd_energy(args: argparse.Namespace):
+    d = _udid2device(args.udid)
+    try:
+        pid = d.instruments.app_launch(args.bundle_id,
+                                       args=args.arguments,
+                                       kill_running=args.kill)
+        d.instruments.start_energy_sampling(pid)
+        while True:
+            ret = d.instruments.get_process_energy_stats(pid)
+            if ret != None:
+                print(json.dumps(ret))
+            time.sleep(1.0)
+    except ServiceError as e:
+        sys.exit(e)
 
 def cmd_launch(args: argparse.Namespace):
     d = _udid2device(args.udid)
@@ -688,6 +702,16 @@ _commands = [
          help='wait for device attached'),
     dict(action=cmd_launch,
          command="launch",
+         flags=[
+             dict(args=['--kill'],
+                  action='store_true',
+                  help='kill app if running'),
+             dict(args=["bundle_id"], help="app bundleId"),
+             dict(args=['arguments'], nargs='*', help='app arguments'),
+         ],
+         help="launch app with bundle_id"),
+    dict(action=cmd_energy,
+         command="energy",
          flags=[
              dict(args=['--kill'],
                   action='store_true',

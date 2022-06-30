@@ -321,6 +321,7 @@ class InstrumentsService(str, enum.Enum):
     GraphicsOpengl = "com.apple.instruments.server.services.graphics.opengl"  # 获取FPS
     Sysmontap = "com.apple.instruments.server.services.sysmontap"  # 获取性能数据用
     XcodeNetworkStatistics = 'com.apple.xcode.debug-gauge-data-providers.NetworkStatistics'  # 获取单进程网络数据
+    XcodeEnergyStatistics = 'com.apple.xcode.debug-gauge-data-providers.Energy' # 获取功耗数据
     Networking = 'com.apple.instruments.server.services.networking'  # 全局网络数据 instruments 用的就是这个
     MobileNotifications = 'com.apple.instruments.server.services.mobilenotifications'  # 监控应用状态
 
