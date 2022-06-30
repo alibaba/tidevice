@@ -671,18 +671,18 @@ class BaseDevice():
         """
         return pid killed
         """
-        instruments = self.connect_instruments()
-        if isinstance(pid_or_name, int):
-            instruments.app_kill(pid_or_name)
-            return pid_or_name
-        elif isinstance(pid_or_name, str):
-            bundle_id = pid_or_name
-            app_infos = list(self.installation.iter_installed(app_type=None))
-            ps = instruments.app_process_list(app_infos)
-            for p in ps:
-                if p['bundle_id'] == bundle_id:
-                    instruments.app_kill(p['pid'])
-                    return p['pid']
+        with self.instruments_context() as ts:
+            if isinstance(pid_or_name, int):
+                ts.app_kill(pid_or_name)
+                return pid_or_name
+            elif isinstance(pid_or_name, str):
+                bundle_id = pid_or_name
+                app_infos = list(self.installation.iter_installed(app_type=None))
+                ps = ts.app_process_list(app_infos)
+                for p in ps:
+                    if p['bundle_id'] == bundle_id:
+                        ts.app_kill(p['pid'])
+                        return p['pid']
         return None
 
     def app_kill(self, *args, **kwargs) -> int:
@@ -698,10 +698,8 @@ class BaseDevice():
         
         return pid
         """
-        instruments = self.connect_instruments()
-        return instruments.app_launch(bundle_id,
-                                           args=args,
-                                           kill_running=kill_running)
+        with self.instruments_context() as ts:
+            return ts.app_launch(bundle_id, args=args, kill_running=kill_running)
 
     def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
         """
@@ -795,11 +793,17 @@ class BaseDevice():
                 LockdownService.InstrumentsRemoteServerSecure)
         else:
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
-        return ServiceInstruments(conn)
 
-    @property
-    def instruments(self) -> ServiceInstruments:
-        return self.connect_instruments()
+        return ServiceInstruments(conn)
+    
+
+    @contextlib.contextmanager
+    def instruments_context(self) -> typing.Generator[ServiceInstruments, None, None]:
+        ts = self.connect_instruments()
+        try:
+            yield ts
+        finally:
+            ts.close()
 
     def _launch_app_runner(self,
                     bundle_id: str,

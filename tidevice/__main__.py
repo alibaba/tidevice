@@ -42,6 +42,9 @@ logger = logging.getLogger(PROGRAM_NAME)
 
 
 ulogger.disable(PROGRAM_NAME)
+# ulogger.remove()
+# ulogger.add(sys.stderr, level="INFO")
+
 
 def _complete_udid(udid: Optional[str] = None) -> str:
     infos = um.device_list()
@@ -166,8 +169,9 @@ def cmd_install(args: argparse.Namespace):
     bundle_id = d.app_install(args.filepath_or_url)
 
     if args.launch:
-        pid = d.instruments.app_launch(bundle_id)
-        logger.info("Launch %r, process pid: %d", bundle_id, pid)
+        with d.instruments_context() as ts:
+            pid = ts.app_launch(bundle_id)
+            logger.info("Launch %r, process pid: %d", bundle_id, pid)
 
 
 def cmd_uninstall(args: argparse.Namespace):
@@ -314,13 +318,14 @@ def cmd_applist(args: argparse.Namespace):
 
 def cmd_energy(args: argparse.Namespace):
     d = _udid2device(args.udid)
+    ts = d.connect_instruments()
     try:
-        pid = d.instruments.app_launch(args.bundle_id,
+        pid = ts.app_launch(args.bundle_id,
                                        args=args.arguments,
                                        kill_running=args.kill)
-        d.instruments.start_energy_sampling(pid)
+        ts.start_energy_sampling(pid)
         while True:
-            ret = d.instruments.get_process_energy_stats(pid)
+            ret = ts.get_process_energy_stats(pid)
             if ret != None:
                 print(json.dumps(ret))
             time.sleep(1.0)
@@ -330,10 +335,11 @@ def cmd_energy(args: argparse.Namespace):
 def cmd_launch(args: argparse.Namespace):
     d = _udid2device(args.udid)
     try:
-        pid = d.instruments.app_launch(args.bundle_id,
-                                       args=args.arguments,
-                                       kill_running=args.kill)
-        print("PID:", pid)
+        with d.instruments_context() as ts:
+            pid = ts.app_launch(args.bundle_id,
+                                        args=args.arguments,
+                                        kill_running=args.kill)
+            print("PID:", pid)
     except ServiceError as e:
         sys.exit(e)
 
@@ -353,8 +359,9 @@ def cmd_kill(args: argparse.Namespace):
 
 def cmd_system_info(args):
     d = _udid2device(args.udid)
-    sinfo = d.instruments.system_info()
-    pprint(sinfo)
+    with d.instruments_context() as ts:
+        sinfo = ts.system_info()
+        pprint(sinfo)
 
 
 def cmd_battery(args: argparse.Namespace):
@@ -485,7 +492,7 @@ def cmd_syslog(args: argparse.Namespace):
 
 def cmd_dump_fps(args):
     d = _udid2device(args.udid)
-    for data in d.instruments.iter_opengl_data():
+    for data in d.connect_instruments().iter_opengl_data():
         if isinstance(data, str):
             continue
         fps = data['CoreAnimationFramesPerSecond']
@@ -563,7 +570,7 @@ def cmd_fsync(args: argparse.Namespace):
 def cmd_ps(args: argparse.Namespace):
     d = _udid2device(args.udid)
     app_infos = list(d.installation.iter_installed(app_type=None))
-    ps = list(d.instruments.app_process_list(app_infos))
+    ps = list(d.connect_instruments().app_process_list(app_infos))
 
     lens = defaultdict(int)
     json_data = []

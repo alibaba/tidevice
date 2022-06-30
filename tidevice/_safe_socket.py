@@ -27,6 +27,7 @@ _nlock = threading.Lock()
 _id_numbers = []
 
 def acquire_uid() -> int:
+    logger.info("Create new socket, total {}", len(_id_numbers) + 1)
     with _nlock:
         _n[0] += 1
         _id_numbers.append(_n[0])
@@ -38,7 +39,7 @@ def release_uid(id: int):
         _id_numbers.remove(id)
     except ValueError:
         pass
-    logger.debug("Activate socket count {}", len(_id_numbers))
+    logger.info("Release socket, total: {}", len(_id_numbers))
     
 
 
@@ -215,8 +216,8 @@ class PlistSocket(SafeStreamSocket):
 class PlistSocketProxy:
     def __init__(self, psock: typing.Union[PlistSocket, "PlistSocketProxy"]):
         if isinstance(psock, PlistSocketProxy):
-            self._psock = psock._psock
             psock._finalizer.detach()
+            self.__dict__.update(psock.__dict__)
         else:
             assert isinstance(psock, PlistSocket)
             self._psock = psock

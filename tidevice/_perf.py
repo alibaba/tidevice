@@ -12,6 +12,7 @@ import typing
 import uuid
 from collections import defaultdict, namedtuple
 from typing import Any, Iterator, Optional, Tuple, Union
+import weakref
 
 from ._device import BaseDevice
 from ._proto import *
@@ -33,12 +34,13 @@ class RunningProcess:
     PID_UPDATE_DURATION = 5.0
 
     def __init__(self, d: BaseDevice, bundle_id: str):
-        self._ins = d.instruments
+        self._ins = d.connect_instruments()
         self._bundle_id = bundle_id
         self._app_infos = list(d.installation.iter_installed(app_type=None))
         self._next_update_time = 0.0
         self._last_pid = None
         self._lock = threading.Lock()
+        weakref.finalize(self, self._ins.close)
 
     @property
     def bundle_id(self) -> str:
@@ -100,19 +102,21 @@ def gen_stimestamp(seconds: Optional[float] = None) -> str:
 
 
 def iter_fps(d: BaseDevice) -> Iterator[Any]:
-    for data in d.instruments.iter_opengl_data():
-        fps = data['CoreAnimationFramesPerSecond'] # fps from GPU
-        # print("FPS:", fps)
-        yield DataType.FPS, {"fps": fps, "time": time.time(), "value": fps}
+    with d.instruments_context() as ts:
+        for data in ts.iter_opengl_data():
+            fps = data['CoreAnimationFramesPerSecond'] # fps from GPU
+            # print("FPS:", fps)
+            yield DataType.FPS, {"fps": fps, "time": time.time(), "value": fps}
 
 
 def iter_gpu(d: BaseDevice) -> Iterator[Any]:
-    for data in d.instruments.iter_opengl_data():
-        device_utilization = data['Device Utilization %']  # Device Utilization
-        tiler_utilization = data['Tiler Utilization %'] # Tiler Utilization
-        renderer_utilization = data['Renderer Utilization %'] # Renderer Utilization
-        yield DataType.GPU, {"device": device_utilization, "renderer": renderer_utilization,
-                             "tiler": tiler_utilization, "time": time.time(), "value": device_utilization}
+    with d.instruments_context() as ts:
+        for data in ts.iter_opengl_data():
+            device_utilization = data['Device Utilization %']  # Device Utilization
+            tiler_utilization = data['Tiler Utilization %'] # Tiler Utilization
+            renderer_utilization = data['Renderer Utilization %'] # Renderer Utilization
+            yield DataType.GPU, {"device": device_utilization, "renderer": renderer_utilization,
+                                "tiler": tiler_utilization, "time": time.time(), "value": device_utilization}
 
 
 def iter_screenshot(d: BaseDevice) -> Iterator[Tuple[DataType, dict]]:
@@ -146,75 +150,76 @@ def _iter_complex_cpu_memory(d: BaseDevice,
         'mem_rss': 130760704,
         'pid': 1344}
     """
-    for info in d.instruments.iter_cpu_memory():
-        pid = rp.get_pid()
+    with d.instruments_context() as ts:
+        for info in ts.iter_cpu_memory():
+            pid = rp.get_pid()
 
-        if info is None or len(info) != 2:
-            continue
-        sinfo, pinfolist = info
-        if 'CPUCount' not in sinfo:
-            sinfo, pinfolist = pinfolist, sinfo
+            if info is None or len(info) != 2:
+                continue
+            sinfo, pinfolist = info
+            if 'CPUCount' not in sinfo:
+                sinfo, pinfolist = pinfolist, sinfo
 
-        if 'CPUCount' not in sinfo:
-            continue
+            if 'CPUCount' not in sinfo:
+                continue
 
-        cpu_count = sinfo['CPUCount']
+            cpu_count = sinfo['CPUCount']
 
-        sys_cpu_usage = sinfo['SystemCPUUsage']
-        cpu_total_load = sys_cpu_usage['CPU_TotalLoad']
-        cpu_user = sys_cpu_usage['CPU_UserLoad']
-        cpu_sys = sys_cpu_usage['CPU_SystemLoad']
+            sys_cpu_usage = sinfo['SystemCPUUsage']
+            cpu_total_load = sys_cpu_usage['CPU_TotalLoad']
+            cpu_user = sys_cpu_usage['CPU_UserLoad']
+            cpu_sys = sys_cpu_usage['CPU_SystemLoad']
 
-        if 'Processes' not in pinfolist:
-            continue
+            if 'Processes' not in pinfolist:
+                continue
 
-        # 这里的total_cpu_usage加起来的累计值大概在0.5~5.0之间
-        total_cpu_usage = 0.0
-        for attrs in pinfolist['Processes'].values():
-            pinfo = ProcAttrs(*attrs)
-            if isinstance(pinfo.cpuUsage, float):  # maybe NSNull
-                total_cpu_usage += pinfo.cpuUsage
+            # 这里的total_cpu_usage加起来的累计值大概在0.5~5.0之间
+            total_cpu_usage = 0.0
+            for attrs in pinfolist['Processes'].values():
+                pinfo = ProcAttrs(*attrs)
+                if isinstance(pinfo.cpuUsage, float):  # maybe NSNull
+                    total_cpu_usage += pinfo.cpuUsage
 
-        cpu_usage = 0.0
-        attrs = pinfolist['Processes'].get(pid)
-        if attrs is None:  # process is not running
-            # continue
-            # print('process not launched')
-            pass
-        else:
-            assert len(attrs) == len(SYSMON_PROC_ATTRS)
-            # print(ProcAttrs, attrs)
-            pinfo = ProcAttrs(*attrs)
-            cpu_usage = pinfo.cpuUsage
-        # next_list_process_time = time.time() + next_timeout
-        # cpu_usage, rss, mem_anon, pid = pinfo
+            cpu_usage = 0.0
+            attrs = pinfolist['Processes'].get(pid)
+            if attrs is None:  # process is not running
+                # continue
+                # print('process not launched')
+                pass
+            else:
+                assert len(attrs) == len(SYSMON_PROC_ATTRS)
+                # print(ProcAttrs, attrs)
+                pinfo = ProcAttrs(*attrs)
+                cpu_usage = pinfo.cpuUsage
+            # next_list_process_time = time.time() + next_timeout
+            # cpu_usage, rss, mem_anon, pid = pinfo
 
-        # 很诡异的计算方法，不过也就这种方法计算出来的CPU看起来正常一点
-        # 计算后的cpuUsage范围 [0, 100]
-        # cpu_total_load /= cpu_count
-        # cpu_usage *= cpu_total_load
-        # if total_cpu_usage > 0:
-        #     cpu_usage /= total_cpu_usage
+            # 很诡异的计算方法，不过也就这种方法计算出来的CPU看起来正常一点
+            # 计算后的cpuUsage范围 [0, 100]
+            # cpu_total_load /= cpu_count
+            # cpu_usage *= cpu_total_load
+            # if total_cpu_usage > 0:
+            #     cpu_usage /= total_cpu_usage
 
-        # print("cpuUsage: {}, total: {}".format(cpu_usage, total_cpu_usage))
-        # print("memory: {} MB".format(pinfo.physFootprint / 1024 / 1024))
-        yield dict(
-            type="process",
-            pid=pid,
-            phys_memory=pinfo.physFootprint,  # 物理内存
-            phys_memory_string="{:.1f} MiB".format(pinfo.physFootprint / 1024 /
-                                                   1024),
-            vss=pinfo.memVirtualSize,
-            rss=pinfo.memResidentSize,
-            anon=pinfo.memAnon,  # 匿名内存? 这个是啥
-            cpu_count=cpu_count,
-            cpu_usage=cpu_usage,  # 理论上最高 100.0 (这里是除以过cpuCount的)
-            sys_cpu_usage=cpu_total_load,
-            attr_cpuUsage=pinfo.cpuUsage,
-            attr_cpuTotal=cpu_total_load,
-            attr_ctxSwitch=pinfo.ctxSwitch,
-            attr_intWakeups=pinfo.intWakeups,
-            attr_systemInfo=sys_cpu_usage)
+            # print("cpuUsage: {}, total: {}".format(cpu_usage, total_cpu_usage))
+            # print("memory: {} MB".format(pinfo.physFootprint / 1024 / 1024))
+            yield dict(
+                type="process",
+                pid=pid,
+                phys_memory=pinfo.physFootprint,  # 物理内存
+                phys_memory_string="{:.1f} MiB".format(pinfo.physFootprint / 1024 /
+                                                    1024),
+                vss=pinfo.memVirtualSize,
+                rss=pinfo.memResidentSize,
+                anon=pinfo.memAnon,  # 匿名内存? 这个是啥
+                cpu_count=cpu_count,
+                cpu_usage=cpu_usage,  # 理论上最高 100.0 (这里是除以过cpuCount的)
+                sys_cpu_usage=cpu_total_load,
+                attr_cpuUsage=pinfo.cpuUsage,
+                attr_cpuTotal=cpu_total_load,
+                attr_ctxSwitch=pinfo.ctxSwitch,
+                attr_intWakeups=pinfo.intWakeups,
+                attr_systemInfo=sys_cpu_usage)
 
 
 def iter_cpu_memory(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
@@ -244,15 +249,16 @@ def set_interval(it: Iterator[Any], interval: float):
 
 def iter_network_flow(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
     n = 0
-    for nstat in d.instruments.iter_network():
-        # if n < 2:
-        #     n += 1
-        #     continue
-        yield DataType.NETWORK, {
-            "timestamp": gen_stimestamp(),
-            "downFlow": (nstat['rx.bytes'] or 0) / 1024,
-            "upFlow": (nstat['tx.bytes'] or 0) / 1024
-        }
+    with d.instruments_context() as ts:
+        for nstat in ts.iter_network():
+            # if n < 2:
+            #     n += 1
+            #     continue
+            yield DataType.NETWORK, {
+                "timestamp": gen_stimestamp(),
+                "downFlow": (nstat['rx.bytes'] or 0) / 1024,
+                "upFlow": (nstat['tx.bytes'] or 0) / 1024
+            }
 
 
 def append_data(wg: WaitGroup, stop_event: threading.Event,
