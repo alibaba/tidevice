@@ -334,9 +334,18 @@ def cmd_energy(args: argparse.Namespace):
 
 def cmd_launch(args: argparse.Namespace):
     d = _udid2device(args.udid)
+
+    env = {}
+    for kv in args.env or []:
+        key, val = kv.split(":", 1)
+        env[key] = val
+    if env:
+        logger.info("App launch env: %s", env)
+
     try:
         with d.instruments_context() as ts:
             pid = ts.app_launch(args.bundle_id,
+                                        app_env=env,
                                         args=args.arguments,
                                         kill_running=args.kill)
             print("PID:", pid)
@@ -753,6 +762,10 @@ _commands = [
                   help='kill app if running'),
              dict(args=["bundle_id"], help="app bundleId"),
              dict(args=['arguments'], nargs='*', help='app arguments'),
+             dict(
+                 args=['-e', '--env'],
+                 action='append',
+                 help="set env with format key:value, support multi -e"),
          ],
          help="launch app with bundle_id"),
     dict(action=cmd_energy,

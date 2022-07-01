@@ -653,6 +653,7 @@ class ServiceInstruments(DTXService):
 
     def app_launch(self,
                    bundle_id: str,
+                   app_env: dict = {},
                    args: list = [],
                    kill_running: bool = False) -> int:
         """
@@ -662,8 +663,6 @@ class ServiceInstruments(DTXService):
         code = self.make_channel(self._SERVICE_PROCESS_CONTROL)
         method = "launchSuspendedProcessWithDevicePath:bundleIdentifier:environment:arguments:options:"
         app_path = ""  # not used, just pass empty string
-        app_env = {
-        }  # environment variables: not used, just pass empty dictionary
         #app_args = []  # not used, just pass empty array
 
         options = {
