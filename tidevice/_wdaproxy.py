@@ -53,7 +53,8 @@ class WDAService:
                 if resp.status_code != 200:
                     return False
                 return resp.text.strip() == "I-AM-ALIVE"
-        except requests.RequestException:
+        except requests.RequestException as e:
+            self.logger.debug("request error: %s", e)
             return False
         except MuxReplyError as e:
             if e.reply_code != UsbmuxReplyCode.ConnectionRefused:
@@ -66,10 +67,11 @@ class WDAService:
     def _wait_ready(self,
                     proc,
                     stop_event: threading.Event,
-                    timeout: float = 30.0) -> bool:
+                    timeout: float = 10.0) -> bool:
         deadline = time.time() + timeout
         while not stop_event.is_set() and time.time() < deadline:
-            if self._is_alive():
+            alive = self._is_alive()
+            if alive:
                 return True
 
             if proc.poll() is not None:  # program quit
