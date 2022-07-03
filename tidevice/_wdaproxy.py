@@ -67,7 +67,7 @@ class WDAService:
     def _wait_ready(self,
                     proc,
                     stop_event: threading.Event,
-                    timeout: float = 10.0) -> bool:
+                    timeout: float = 60.0) -> bool:
         deadline = time.time() + timeout
         while not stop_event.is_set() and time.time() < deadline:
             alive = self._is_alive()
