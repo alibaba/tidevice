@@ -41,7 +41,6 @@ um: Usbmux = None  # Usbmux
 logger = logging.getLogger(PROGRAM_NAME)
 
 
-ulogger.disable(PROGRAM_NAME)
 # ulogger.remove()
 # ulogger.add(sys.stderr, level="INFO")
 
