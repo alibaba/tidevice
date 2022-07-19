@@ -4,6 +4,7 @@
 """
 
 import abc
+import functools
 import logging
 import subprocess
 import sys
@@ -14,7 +15,6 @@ import traceback
 
 import logzero
 import requests
-from cached_property import cached_property
 
 from . import requests_usbmux
 from ._device import Device
@@ -38,7 +38,7 @@ class WDAService:
     def udid(self) -> str:
         return self._d.udid
 
-    @cached_property
+    @functools.lru_cache(None)
     def logger(self) -> logging.Logger:
         log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] [{self.udid}]%(end_color)s %(message)s'
         formatter = logzero.LogFormatter(fmt=log_format)

@@ -12,9 +12,9 @@ import os
 import pathlib
 import re
 import shutil
+import socket
 import ssl
 import sys
-import socket
 import tempfile
 import threading
 import time
@@ -24,9 +24,9 @@ import zipfile
 from typing import Iterator, Optional, Union
 
 import requests
+from deprecation import deprecated
 from logzero import setup_logger
 from PIL import Image
-from retry import retry
 
 from . import bplist
 from ._crash import CrashManager
@@ -671,7 +671,7 @@ class BaseDevice():
         """
         return pid killed
         """
-        with self.instruments_context() as ts:
+        with self.connect_instruments() as ts:
             if isinstance(pid_or_name, int):
                 ts.app_kill(pid_or_name)
                 return pid_or_name
@@ -698,7 +698,7 @@ class BaseDevice():
         
         return pid
         """
-        with self.instruments_context() as ts:
+        with self.connect_instruments() as ts:
             return ts.app_launch(bundle_id, args=args, kill_running=kill_running)
 
     def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
@@ -796,15 +796,10 @@ class BaseDevice():
 
         return ServiceInstruments(conn)
     
-
-    @contextlib.contextmanager
+    @deprecated(details="use connect_instruments instead")
     def instruments_context(self) -> typing.Generator[ServiceInstruments, None, None]:
-        ts = self.connect_instruments()
-        try:
-            yield ts
-        finally:
-            ts.close()
-
+        return self.connect_instruments()
+        
     def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,

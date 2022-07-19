@@ -8,8 +8,6 @@
 # requests; python_version >= '3.6'
 # requests; sys_platform == 'win32'
 
-cached_property
-logzero
 Pillow
 requests
 colored
@@ -20,4 +18,6 @@ simple_tornado>=0.2.2
 retry
 simplejson
 tabulate
+logzero
 loguru
+deprecation

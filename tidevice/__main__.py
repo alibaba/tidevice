@@ -168,7 +168,7 @@ def cmd_install(args: argparse.Namespace):
     bundle_id = d.app_install(args.filepath_or_url)
 
     if args.launch:
-        with d.instruments_context() as ts:
+        with d.connect_instruments() as ts:
             pid = ts.app_launch(bundle_id)
             logger.info("Launch %r, process pid: %d", bundle_id, pid)
 
@@ -255,6 +255,7 @@ def cmd_xctest(args: argparse.Namespace):
     Run XCTest required WDA installed.
     """
     if args.debug:
+        ulogger.enable(PROGRAM_NAME)
         setup_logger(LOG.xctest, level=logging.DEBUG)
 
     d = _udid2device(args.udid)
@@ -342,7 +343,7 @@ def cmd_launch(args: argparse.Namespace):
         logger.info("App launch env: %s", env)
 
     try:
-        with d.instruments_context() as ts:
+        with d.connect_instruments() as ts:
             pid = ts.app_launch(args.bundle_id,
                                         app_env=env,
                                         args=args.arguments,
@@ -367,7 +368,7 @@ def cmd_kill(args: argparse.Namespace):
 
 def cmd_system_info(args):
     d = _udid2device(args.udid)
-    with d.instruments_context() as ts:
+    with d.connect_instruments() as ts:
         sinfo = ts.system_info()
         pprint(sinfo)
 
@@ -578,7 +579,8 @@ def cmd_fsync(args: argparse.Namespace):
 def cmd_ps(args: argparse.Namespace):
     d = _udid2device(args.udid)
     app_infos = list(d.installation.iter_installed(app_type=None))
-    ps = list(d.connect_instruments().app_process_list(app_infos))
+    with d.connect_instruments() as ts:
+        ps = list(ts.app_process_list(app_infos))
 
     lens = defaultdict(int)
     json_data = []

@@ -20,7 +20,7 @@ from ._utils import set_socket_timeout
 from .exceptions import *
 
 from loguru import logger
-# logger = logging.getLogger(PROGRAM_NAME)
+
 
 _n = [0]
 _nlock = threading.Lock()

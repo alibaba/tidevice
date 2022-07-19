@@ -535,7 +535,6 @@ class DTXService(PlistSocketProxy):
         return True
 
     def _handle_dtx_message(self, m: DTXMessage) -> bool:
-        # logger.warning("Callback: identifier: %s", m.result) # TODO
         assert m.header.expects_reply == 1
 
         if m.channel_id == 0xFFFFFFFF and m.flags == 0x05:
@@ -550,7 +549,6 @@ class DTXService(PlistSocketProxy):
             #     logger.debug("logDebugMessage: %s", args)
             #     self._reply_null(m)
 
-            # logger.warning("Callback: identifier: %s", m.result) # TODO
             if self._call_handlers(identifier, m):
                 return True
         # else:
@@ -559,12 +557,18 @@ class DTXService(PlistSocketProxy):
 
     def wait_reply(self, message_id: int, timeout=30.0) -> DTXMessage:
         """
+        Raises:
+            MuxError, ServiceError
+
         Refs: https://www.tornadoweb.org/en/stable/guide/async.html#asynchronous
         """
-        ret = self._reply_queues[message_id].get(timeout=timeout)
-        if ret is None:
-            raise MuxError("connection closed")
-        return ret
+        try:
+            ret = self._reply_queues[message_id].get(timeout=timeout)
+            if ret is None:
+                raise MuxError("connection closed")
+            return ret
+        except queue.Empty:
+            raise ServiceError("wait reply timeout")
 
     def _drain_background(self):
         threading.Thread(name="DTXMessage", target=self._drain, daemon=True).start()
@@ -686,7 +690,7 @@ class ServiceInstruments(DTXService):
 
         self.call_message(channel, "killPid:", [pid], expects_reply=False)
 
-    def app_running_processes(self):
+    def app_running_processes(self) -> typing.List[dict]:
         """
         Returns array of dict:
             {'isApplication': False,
