@@ -38,6 +38,7 @@ class WDAService:
     def udid(self) -> str:
         return self._d.udid
 
+    @property
     @functools.lru_cache(None)
     def logger(self) -> logging.Logger:
         log_format = f'%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d] [{self.udid}]%(end_color)s %(message)s'
