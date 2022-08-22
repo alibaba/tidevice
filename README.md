@@ -371,6 +371,7 @@ Python code style(ZH): https://zh-google-styleguide.readthedocs.io/en/latest/goo
 ## Alternatives
 - <https://github.com/danielpaulus/go-ios>
 - Go implemented: <https://github.com/electricbubble/gidevice>
+- https://github.com/SonicCloudOrg/sonic-ios-bridge
 
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>

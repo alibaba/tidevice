@@ -333,6 +333,8 @@ perf.stop()
 
 ## Alternative
 - https://github.com/danielpaulus/go-ios
+- https://github.com/electricbubble/gidevice
+- https://github.com/SonicCloudOrg/sonic-ios-bridge
 
 ## DEVELOP
 See [DEVELOP](DEVELOP.md)
