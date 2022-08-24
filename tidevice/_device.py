@@ -282,8 +282,6 @@ class BaseDevice():
     def _system_BUID(self):
         return self.pair_record['SystemBUID']
 
-    # 2022-08-24 add retry delay, looks like sometime can recover
-    @retry((ssl.SSLError, socket.timeout), delay=3, jitter=1, tries=3, logger=logging)
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
@@ -789,6 +787,8 @@ class BaseDevice():
             conn = self.start_service(LockdownService.TestmanagerdLockdown)
         return DTXService(conn)
 
+    # 2022-08-24 add retry delay, looks like sometime can recover
+    @retry((ssl.SSLError, socket.timeout), delay=10, jitter=1, tries=3, logger=logging)
     def connect_instruments(self) -> ServiceInstruments:
         """ start service for instruments """
         if self.major_version() >= 14:
