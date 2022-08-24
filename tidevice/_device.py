@@ -27,6 +27,7 @@ import requests
 from deprecation import deprecated
 from logzero import setup_logger
 from PIL import Image
+from retry import retry
 
 from . import bplist
 from ._crash import CrashManager
@@ -281,6 +282,8 @@ class BaseDevice():
     def _system_BUID(self):
         return self.pair_record['SystemBUID']
 
+    # 2022-08-24 add retry delay, looks like sometime can recover
+    @retry((ssl.SSLError, socket.timeout), delay=3, jitter=1, tries=3, logger=logging)
     def create_inner_connection(
             self,
             port: int = LOCKDOWN_PORT,  # 0xf27e,
