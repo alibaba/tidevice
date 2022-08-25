@@ -788,7 +788,8 @@ class BaseDevice():
         return DTXService(conn)
 
     # 2022-08-24 add retry delay, looks like sometime can recover
-    @retry((ssl.SSLError, socket.timeout), delay=10, jitter=1, tries=3, logger=logging)
+    # BrokenPipeError(ConnectionError)
+    @retry((ssl.SSLError, socket.timeout, BrokenPipeError), delay=10, jitter=1, tries=3, logger=logging)
     def connect_instruments(self) -> ServiceInstruments:
         """ start service for instruments """
         if self.major_version() >= 14:
