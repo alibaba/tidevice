@@ -110,7 +110,7 @@ class SafeStreamSocket:
         while len(buf) < size:
             chunk = self._sock.recv(size - len(buf))
             if not chunk:
-                raise MuxError("socket connection broken")
+                raise ConnectionError("socket connection broken")
             buf.extend(chunk)
         return buf
 

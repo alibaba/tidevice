@@ -10,7 +10,7 @@ __all__ = [
 from ._proto import UsbmuxReplyCode
 
 
-class MuxError(Exception):
+class MuxError(OSError):
     """ Mutex error """
     pass
 

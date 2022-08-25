@@ -558,14 +558,14 @@ class DTXService(PlistSocketProxy):
     def wait_reply(self, message_id: int, timeout=30.0) -> DTXMessage:
         """
         Raises:
-            MuxError, ServiceError
+            ConnectionError, ServiceError
 
         Refs: https://www.tornadoweb.org/en/stable/guide/async.html#asynchronous
         """
         try:
             ret = self._reply_queues[message_id].get(timeout=timeout)
             if ret is None:
-                raise MuxError("connection closed")
+                raise ConnectionError("connection closed")
             return ret
         except queue.Empty:
             raise ServiceError("wait reply timeout")
