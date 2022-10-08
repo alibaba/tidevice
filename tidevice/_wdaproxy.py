@@ -48,8 +48,9 @@ class WDAService:
     def _is_alive(self) -> bool:
         try:
             with requests_usbmux.Session() as session:
+                use_port = self._env['USE_PORT'] if self._env['USE_PORT'] is not None else 8100
                 resp = session.get(requests_usbmux.DEFAULT_SCHEME +
-                                   f"{self.udid}:8100/HEALTH",
+                                   f"{self.udid}:{use_port}/HEALTH",
                                    timeout=self._DEFAULT_TIMEOUT)
                 if resp.status_code != 200:
                     return False

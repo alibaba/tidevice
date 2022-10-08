@@ -470,9 +470,10 @@ def cmd_wdaproxy(args: argparse.Namespace):
 
     p = None
     if args.port:
+        use_port = env['USE_PORT'] if env['USE_PORT'] is not None else 8100
         cmds = [
             sys.executable, '-m', 'tidevice', '-u', d.udid, 'relay',
-            str(args.port), '8100'
+            str(args.port), use_port
         ]
         p = subprocess.Popen(cmds, stdout=sys.stdout, stderr=sys.stderr)
 
