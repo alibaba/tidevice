@@ -42,6 +42,8 @@ pip3 install -U tidevice
 
 ## 使用
 
+> 使用--trace选项可以查看socket数据流
+
 ### 查看版本号
 ```bash
 $ tidevice version

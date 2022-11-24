@@ -693,11 +693,13 @@ class BaseDevice():
     def app_start(self,
                   bundle_id: str,
                   args: Optional[list] = [],
-                  kill_running: bool = False) -> int:
+                  kill_running: bool = True) -> int:
         """
         start application
         
         return pid
+
+        Note: kill_running better to True, if set to False, launch 60 times will trigger instruments service stop
         """
         with self.connect_instruments() as ts:
             return ts.app_launch(bundle_id, args=args, kill_running=kill_running)
