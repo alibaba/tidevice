@@ -42,11 +42,8 @@ def get_developer_image_url_list(version: str) -> typing.List[str]:
     """ return url list which may contains mirror url """
     # https://github.com/JinjunHan/iOSDeviceSupport
     github_repo = "JinjunHan/iOSDeviceSupport"
-    zip_name = f"{version}.zip"
 
-    # the code.aliyun slowlly
-    # gitee requires login
-    # aliyun_url = f"https://code.aliyun.com/hanjinjun/iOSDeviceSupoort/raw/master/DeviceSupport/{zip_name}"
+    zip_name = f"{version}.zip"
     origin_url = f"https://github.com/{github_repo}/raw/master/DeviceSupport/{zip_name}"
     mirror_url = origin_url.replace("https://github.com", "https://tool.appetizer.io")
     return (mirror_url, origin_url)
@@ -59,6 +56,19 @@ def cache_developer_image(version: str) -> str:
     _alias = {
         "12.5": "12.4",
     }
+    # https://github.com/alibaba/taobao-iphone-device/issues/258#issuecomment-1328728799
+    # download image from https://github.com/iGhibli/iOS-DeviceSupport
+    # 换了16.1好像也没什么卵用
+    version_url_map = {
+        "15.7": "https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/15.7(FromXcode_14.1_Release_Candidate_xip).zip",
+        "16.1": "https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/16.1(FromXcode_14.1_Release_Candidate_xip).zip",
+    }
+
+    # Default download image from https://github.com/JinjunHan/iOSDeviceSupport
+    image_urls = get_developer_image_url_list(version)
+    if version in version_url_map:
+        image_urls = [version_url_map[version]]
+
     if version in _alias:
         version = _alias[version]
         logger.info("Use alternative developer image %s", version)
@@ -67,10 +77,8 @@ def cache_developer_image(version: str) -> str:
     local_device_support = get_app_dir("device-support")
     image_zip_path = os.path.join(local_device_support, version+".zip")
     if not zipfile.is_zipfile(image_zip_path):
-        urls = get_developer_image_url_list(version)
-
         err = None
-        for url in urls:
+        for url in image_urls:
             try:
                 _urlretrieve(url, image_zip_path)
                 if zipfile.is_zipfile(image_zip_path):
