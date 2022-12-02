@@ -39,6 +39,15 @@ pip3 install -U tidevice
 
 ## Usage
 
+Use `--trace` can open socket log. For example: `tidevice --trace info`
+
+### iOS Setting
+iOS 16 need to Open Developer mode Manualy
+
+How to open
+
+Settings -> Privacy & Security -> Developer Mode -> (Turn switch ON) -> (Click "Restart") -> (Click "Turn On" when Dialog appears)
+
 ### Show version number
 ```bash
 $ tidevice version

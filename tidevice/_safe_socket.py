@@ -127,7 +127,7 @@ class SafeStreamSocket:
 
     def switch_to_ssl(self, pemfile):
         """ wrap socket to SSLSocket """
-        # logger.debug("Switch to ssl")
+        logger.debug("Socket({}): switch to ssl", self.id)
         assert os.path.isfile(pemfile)
         
         # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
