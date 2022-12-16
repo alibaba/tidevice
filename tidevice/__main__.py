@@ -608,7 +608,6 @@ def cmd_ps(args: argparse.Namespace):
 
 
 def cmd_perf(args: argparse.Namespace):
-    assert args.bundle_id
     #print("BundleID:", args.bundle_id)
     from ._perf import Performance
     d = _udid2device(args.udid)
@@ -617,20 +616,27 @@ def cmd_perf(args: argparse.Namespace):
         perfs = []
         for _typename in args.perfs.split(","):
             perfs.append(DataType(_typename))
-    # print(perfs)
+    
+    if (DataType.MEMORY in perfs or DataType.CPU in perfs) and not args.bundle_id:
+        print('\033[1;31m error: the following arguments are required: -B/--bundle_id \033[0m')
+        exit(-1)
+
     perf = Performance(d, perfs=perfs)
 
     def _cb(_type: DataType, data):
-        print(_type.value, data, flush=True)
+        if args.json and _type != DataType.SCREENSHOT:
+            data = json.dumps(data)
+        print(_type.value, data, flush=True) if len(perfs) != 1 else print(data,flush=True)
 
     try:
         perf.start(args.bundle_id, callback=_cb)
         #print("Ctrl-C to finish")
         while True:
             time.sleep(.1)
+    except KeyboardInterrupt:
+        pass
     finally:
         perf.stop()
-
 
 def cmd_set_assistive_touch(args: argparse.Namespace):
     d = _udid2device(args.udid)
@@ -895,12 +901,15 @@ _commands = [
          command="perf",
          flags=[
              dict(args=['-B', '--bundle_id'],
-                  help='app bundle id',
-                  required=True),
+                  help='app bundle id (cpu/memory required)',
+                  required=False),
              dict(args=['-o'],
                   dest='perfs',
                   help='cpu,memory,fps,network,screenshot. separate by ","',
                   required=False),
+            dict(args=['--json'],
+                  action='store_true',
+                  help='format output as json'),
          ],
          help="performance of app"),
     dict(action=cmd_set_assistive_touch,

@@ -24,6 +24,8 @@ import weakref
 from collections import defaultdict, namedtuple
 from typing import Any, Iterator, List, Optional, Tuple, Union
 
+from ctypes import Structure,c_byte,c_uint16,c_uint32
+from socket import inet_ntoa,htons,inet_ntop,AF_INET6
 from retry import retry
 
 from . import bplist
@@ -54,6 +56,31 @@ DTXMessage = namedtuple(
     "DTXMessage",
     ['payload', 'header', 'message_id', 'channel_id', 'flags', 'result'])
 
+
+
+class SockAddr4(Structure):
+    _fields_ = [
+        ('len', c_byte),
+        ('family', c_byte),
+        ('port', c_uint16),
+        ('addr', c_byte * 4),
+        ('zero', c_byte * 8)
+        ]
+    
+    def __str__(self):
+        return f"{inet_ntoa(self.addr)}:{htons(self.port)}"
+
+class SockAddr6(Structure):
+    _fields_ = [
+        ('len', c_byte),
+        ('family', c_byte),
+        ('port', c_uint16),
+        ('flowinfo', c_uint32),
+        ('addr', c_byte * 16),
+        ('scopeid', c_uint32)
+    ]
+    def __str__(self):
+        return f"[{inet_ntop(AF_INET6, self.addr)}]:{htons(self.port)}"
 
 class DTXPayload:
     @staticmethod
@@ -828,6 +855,10 @@ class ServiceInstruments(DTXService):
         finally:
             self.close()
     
+    def stop_iter_opengl_data(self):
+        channel = self.make_channel(InstrumentsService.GraphicsOpengl)
+        return self.call_message(channel,"stopSampling")
+
     def iter_application_notification(self) -> Iterator[dict]:
         """ 监听应用通知
         Iterator data
@@ -940,6 +971,10 @@ class ServiceInstruments(DTXService):
             # aux.append_obj(channel_id)
             # self.send_dtx_message(channel_id, DTXPayload.build('_channelCanceled:', aux))
 
+    def stop_iter_cpu_memory(self):
+        channel_id = self.make_channel(InstrumentsService.Sysmontap)
+        return self.call_message(channel_id,"stop")
+
     def start_energy_sampling(self, pid: int):
         ch_network = InstrumentsService.XcodeEnergyStatistics
         return self.call_message(ch_network, 'startSamplingForPIDs:', [{pid}])
@@ -986,6 +1021,9 @@ class ServiceInstruments(DTXService):
         ch_network = 'com.apple.xcode.debug-gauge-data-providers.NetworkStatistics'
         return self.call_message(ch_network, 'stopSamplingForPIDs:', [{pid}])
 
+    def stop_network_iter(self):
+        return self.call_message(InstrumentsService.Networking, 'stopMonitoring:')
+
     def get_process_network_stats(self, pid: int) -> Optional[dict]:
         """
         经测试数据始终不是很准，用safari测试，每次刷新图片的时候，rx.bytes总是不动
@@ -1025,19 +1063,45 @@ class ServiceInstruments(DTXService):
 
         noti_chan = (1<<32) - channel_id
         it = self.iter_message(Event.NOTIFICATION)
+        self.call_message(channel_id, "replayLastRecordedSession")
         self.call_message(channel_id, "startMonitoring")
+
+        headers = {
+            0: ['InterfaceIndex', "Name"],# 网关类型 en0:14 en2:12  anpi0:10
+            1: ['Local', 'Remote', 'InterfaceIndex', 'Pid', 'RecvBufferSize', 'RecvBufferUsed', 'SerialNumber', 'Protocol'],
+            # PacketsIn、ByteIn、PacketsOut、ByteOut、Dups Receieved、Out-Of-order、Retransmitted、Min Round Trip(ms)、Avg Round Trip(ms)
+            2: ['RxPackets', 'RxBytes', 'TxPackets', 'TxBytes', 'RxDups', 'RxOOO', 'TxRetx', 'MinRTT', 'AvgRTT', 'ConnectionSerial', 'Time']
+        }
+        msg_type = {
+            0: "interface-detection",
+            1: "connection-detected",
+            2: "connection-update",
+        }
         for data in it:
             if data.channel_id != noti_chan:
                 continue
             (_type, values) = data.result
-            if _type == 2:
-                rx_packets, rx_bytes, tx_packets, tx_bytes = values[:4]
-                yield {
-                    "rx.packets": rx_packets,
-                    "rx.bytes": rx_bytes,
-                    "tx.packets": tx_packets,
-                    "tx.bytes": tx_bytes,
-                }
+            
+            if _type == 1:
+                if  len(values[0]) == 16:
+                    values[0] = SockAddr4.from_buffer_copy(values[0])
+                    values[1] = SockAddr4.from_buffer_copy(values[1])
+                    values[-1] = 'tcp4' if values[-1] == 1 else 'udp4'
+                elif len(values[0]) == 28:
+                    values[0] = SockAddr6.from_buffer_copy(values[0])
+                    values[1] = SockAddr6.from_buffer_copy(values[1])
+                    values[-1] = 'tcp6' if values[-1] == 1 else 'udp6'
+
+            for idx,v in enumerate(values):
+                if isinstance(v, int) or isinstance(v, float):
+                    pass
+                elif isinstance(v, bplist.NSNull):
+                    values[idx] = None
+                else:
+                    values[idx] = str(v)
+            yield {
+                msg_type[_type]: dict(zip(headers[_type], values))
+            }
 
     def is_running_pid(self, pid: int) -> bool:
         aux = AUXMessageBuffer()
