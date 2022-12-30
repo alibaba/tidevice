@@ -332,13 +332,17 @@ $ tidevice syslog
 
 ```bash
 # 性能采集
-$ tidevice perf -B com.example.demo
-fps {'fps': 0, 'value': 0, 'timestamp': 1620725299495}
-network {'timestamp': 1620725300511, 'downFlow': 55685.94921875, 'upFlow': 2300.96484375}
-screenshot {'value': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=231x500 at 0x1037CF760>, 'timestamp': 1620725301374}
-fps {'fps': 58, 'value': 58, 'timestamp': 1620725873152}
-cpu {'timestamp': 1620725873348, 'pid': 21243, 'value': 1.2141945711006428}
-memory {'pid': 21243, 'timestamp': 1620725873348, 'value': 40.54920196533203}
+$ tidevice perf -B com.example.demo --json
+
+cpu {"timestamp": 1671173334888, "pid": 18717, "value": 0.0, "sys_value": 53.26736370425692, "count": 6}
+memory {"pid": 18717, "timestamp": 1671173334888, "value": 10.20428466796875}
+gpu {"device": 0, "renderer": 0, "tiler": 0, "value": 0, "timestamp": 1671173331745}
+fps {"fps": 0, "value": 0, "timestamp": 1671173331745}
+network {"connection-detected": {"Local": "[fe80::5cd8:6aff:fe80:78c3]:54658", "Remote": "[::]:0", "InterfaceIndex": 10, "Pid": -2, "RecvBufferSize": 131072, "RecvBufferUsed": 0, "SerialNumber": 14, "Protocol": "tcp6"}, "timestamp": 1671173331756}
+network {"interface-detection": {"InterfaceIndex": 10, "Name": "anpi0"}, "timestamp": 1671173331767}
+network {"interface-detection": {"InterfaceIndex": 14, "Name": "en0"}, "timestamp": 1671173331767}
+network {"connection-update": {"RxPackets": 2, "RxBytes": 72, "TxPackets": 3, "TxBytes": 163, "RxDups": null, "RxOOO": null, "TxRetx": null, "MinRTT": 0.039375, "AvgRTT": 0.042, "ConnectionSerial": 56, "Time": 2}, "timestamp": 1671173335754}
+...
 ```
 
 ```bash
