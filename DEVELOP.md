@@ -11,14 +11,17 @@ git clone --depth 5 https://github.com/alibaba/tidevice
 [各种安全证书间的关系及相关操作](https://www.jianshu.com/p/96df7de54375)
 
 ## Inspect usbmuxd data
-Not finished yet.
+Project https://github.com/danielpaulus/go-ios is a golang implementation of ios developer tools.
 
-```
-cd scripts
-sudo ./run-usbmuxd-proxy.sh
-```
+Use this tools to capture and analysis binary data looks better then what I have done before.
 
-The captured data will be stored in `usbmuxd-dumpdata`
+```bash
+git clone https://github.com/danielpaulus/go-ios
+cd go-ios
+go build
+
+sudo ./go-ios dproxy
+```
 
 ## Pair
 1. Retrieve **Device Public Key** from device
@@ -63,3 +66,4 @@ Ref: https://packaging.python.org/guides/publishing-package-distribution-release
 - <https://github.com/troybowman/ios_instruments_client>
 - Binary of libimobiledevice for Windows <http://docs.quamotion.mobi/docs/imobiledevice/>
 - https://pypi.org/project/hexdump/
+- https://github.com/danielpaulus/go-ios
