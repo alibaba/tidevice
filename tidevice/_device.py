@@ -14,6 +14,7 @@ import re
 import shutil
 import socket
 import ssl
+import struct
 import sys
 import tempfile
 import threading
@@ -29,7 +30,7 @@ from logzero import setup_logger
 from PIL import Image
 from retry import retry
 
-from . import bplist
+from . import bplist, plistlib2
 from ._crash import CrashManager
 from ._imagemounter import ImageMounter, cache_developer_image
 from ._installation import Installation
@@ -43,6 +44,7 @@ from ._types import DeviceInfo
 from ._usbmux import Usbmux
 from ._utils import ProgressReader, get_app_dir, set_socket_timeout
 from .exceptions import *
+from .session import Session
 
 logger = logging.getLogger(LOG.main)
 
@@ -297,63 +299,45 @@ class BaseDevice():
                     psock.ssl_unwrap()
         return conn
 
-    @contextlib.contextmanager
-    def create_session(self) -> PlistSocketProxy:
-        """
-        Create session inside SSLContext
-        """
-        with self.create_inner_connection() as _s:  # 62078=0xf27e
-            s: PlistSocketProxy = _s
-            del(_s)
+    def create_session(self) -> Session:
+        s = self.create_inner_connection()
+        data = s.send_recv_packet({"Request": "QueryType"})
+        assert data['Type'] == LockdownService.MobileLockdown
+        data = s.send_recv_packet({
+            'Request': 'GetValue',
+            'Key': 'ProductVersion',
+            'Label': PROGRAM_NAME,
+        })
+        # Expect: {'Key': 'ProductVersion', 'Request': 'GetValue', 'Value': '13.4.1'}
 
-            data = s.send_recv_packet({"Request": "QueryType"})
-            # Expect: {'Request': 'QueryType', 'Type': 'com.apple.mobile.lockdown'}
-            assert data['Type'] == LockdownService.MobileLockdown
+        data = s.send_recv_packet({
+            "Request": "StartSession",
+            "HostID": self.pair_record['HostID'],
+            "SystemBUID": self.pair_record['SystemBUID'],
+            "ProgName": PROGRAM_NAME,
+        })
+        if 'Error' in data:
+            if data['Error'] == 'InvalidHostID':
+                # try to repair device
+                self.pair_record = None
+                self.delete_pair_record()
+                self.handshake()
+                # After paired, call StartSession again
+                data = s.send_recv_packet({
+                    "Request": "StartSession",
+                    "HostID": self.pair_record['HostID'],
+                    "SystemBUID": self.pair_record['SystemBUID'],
+                    "ProgName": PROGRAM_NAME,
+                })
+            else:
+                raise MuxError("StartSession", data['Error'])
 
-            data = s.send_recv_packet({
-                'Request': 'GetValue',
-                'Key': 'ProductVersion',
-                'Label': PROGRAM_NAME,
-            })
-            # Expect: {'Key': 'ProductVersion', 'Request': 'GetValue', 'Value': '13.4.1'}
-
-            data = s.send_recv_packet({
-                "Request": "StartSession",
-                "HostID": self.pair_record['HostID'],
-                "SystemBUID": self.pair_record['SystemBUID'],
-                "ProgName": PROGRAM_NAME,
-            })
-            if 'Error' in data:
-                if data['Error'] == 'InvalidHostID':
-                    # try to repair device
-                    self.pair_record = None
-                    self.delete_pair_record()
-                    self.handshake()
-                    # After paired, call StartSession again
-                    data = s.send_recv_packet({
-                        "Request": "StartSession",
-                        "HostID": self.pair_record['HostID'],
-                        "SystemBUID": self.pair_record['SystemBUID'],
-                        "ProgName": PROGRAM_NAME,
-                    })
-                else:
-                    raise MuxError("StartSession", data['Error'])
-
-            session_id = data['SessionID']
-            if data['EnableSessionSSL']:
-                # tempfile.NamedTemporaryFile is not working well on windows
-                # See: https://stackoverflow.com/questions/6416782/what-is-namedtemporaryfile-useful-for-on-windows
-                s.psock.switch_to_ssl(self.ssl_pemfile_path)
-
-            yield s
-
-            s.send_packet({
-                "Request": "StopSession",
-                "ProtocolVersion": '2',
-                "Label": PROGRAM_NAME,
-                "SessionID": session_id,
-            })
-            s.recv_packet()
+        session_id = data['SessionID']
+        if data['EnableSessionSSL']:
+            # tempfile.NamedTemporaryFile is not working well on windows
+            # See: https://stackoverflow.com/questions/6416782/what-is-namedtemporaryfile-useful-for-on-windows
+            s.psock.switch_to_ssl(self.ssl_pemfile_path)
+        return Session(s, session_id)
 
     def device_info(self, domain: Optional[str] = None) -> dict:
         """
@@ -478,6 +462,31 @@ class BaseDevice():
 
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
+
+    def set_ios16_developer_mode(self, action: int = 0):
+        """
+        开启iOS 16开发者选项
+
+        action:
+            0: Show "Developer Mode" Tab in Privacy & Security
+            1: Reboot device to dialog of Open "Developer Mode"
+        """
+        conn = self.start_service("com.apple.amfi.lockdown")
+        body = plistlib2.dumps({"action": action})
+        payload = struct.pack(">I", len(body)) + body
+        conn.psock.sendall(payload)
+        resp = conn.psock.recv()
+        if resp == b'\x00\x00\x00\xd9':
+            return True
+        elif resp == b'\x00\x00\x00\xfd':
+            return False
+        else:
+            raise ServiceError("set_ios16_developer_mode failed", resp)
+
+    def get_ios16_developer_mode_status(self) -> bool:
+        """ 获取开发者选项是否打开 """
+        status = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
+        return status
 
     def start_service(self, name: str) -> PlistSocketProxy:
         try:
