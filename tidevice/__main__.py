@@ -343,7 +343,7 @@ def cmd_launch(args: argparse.Namespace):
             pid = ts.app_launch(args.bundle_id,
                                         app_env=env,
                                         args=args.arguments,
-                                        kill_running=args.kill)
+                                        kill_running=not args.skip_running)
             print("PID:", pid)
     except ServiceError as e:
         sys.exit(e)
@@ -764,9 +764,7 @@ _commands = [
     dict(action=cmd_launch,
          command="launch",
          flags=[
-             dict(args=['--kill'],
-                  action='store_true',
-                  help='kill app if running'),
+             dict(args=['--skip-running'], action='store_true', help='not kill app if running'),
              dict(args=["bundle_id"], help="app bundleId"),
              dict(args=['arguments'], nargs='*', help='app arguments'),
              dict(args=['-e', '--env'],
