@@ -463,7 +463,7 @@ class BaseDevice():
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
-    def set_ios16_developer_mode(self, action: int = 0):
+    def _set_ios16_developer_mode(self, action: int = 0):
         """
         开启iOS 16开发者选项
 
@@ -478,12 +478,14 @@ class BaseDevice():
         resp = conn.psock.recv()
         if resp == b'\x00\x00\x00\xd9':
             return True
+        if resp == b'\x00\x00\x00\xe6':
+            return True
         elif resp == b'\x00\x00\x00\xfd':
             return False
         else:
             raise ServiceError("set_ios16_developer_mode failed", resp)
 
-    def get_ios16_developer_mode_status(self) -> bool:
+    def _get_ios16_developer_mode_status(self) -> bool:
         """ 获取开发者选项是否打开 """
         status = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
         return status
@@ -655,6 +657,11 @@ class BaseDevice():
         Raises:
             MuxError
         """
+        if self.major_version() >= 16:
+            is_developer = self._get_ios16_developer_mode_status()
+            if not is_developer:
+                print("Restarting device in order to open Developer Mode")
+                self._set_ios16_developer_mode(1)
         try:
             if self.imagemounter.is_developer_mounted():
                 logger.info("DeveloperImage already mounted")

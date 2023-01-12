@@ -270,11 +270,11 @@ def cmd_xctest(args: argparse.Namespace):
 def cmd_screenshot(args: argparse.Namespace):
     d = _udid2device(args.udid)
     filename = args.filename or "screenshot.jpg"
-    print("Screenshot saved to", filename)
     d.screenshot().convert("RGB").save(filename)
+    print("Screenshot saved to", filename)
 
 
-def cmd_app_info(args: argparse.Namespace):
+def cmd_appinfo(args: argparse.Namespace):
     d = _udid2device(args.udid)
     info = d.installation.lookup(args.bundle_id)
     if info is None:
@@ -705,7 +705,7 @@ _commands = [
     dict(action=cmd_system_info,
          command="sysinfo",
          help="show device system info"),
-    dict(action=cmd_app_info,
+    dict(action=cmd_appinfo,
          command="appinfo",
          flags=[
              dict(args=['--json'],
