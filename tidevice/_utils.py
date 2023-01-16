@@ -14,6 +14,8 @@ import threading
 import time
 import typing
 
+import packaging.version
+
 from ._proto import PROGRAM_NAME
 
 logger = logging.getLogger(PROGRAM_NAME)
@@ -240,3 +242,21 @@ def set_socket_timeout(conn: typing.Union[typing.Callable[..., socket.socket], s
             get_conn().settimeout(old_value)
         except:
             pass
+
+
+def semver_compare(ver1: str, ver2: str) -> int:
+    """Compare two semver strings
+    Args:
+        ver1: "1.2.3"
+        ver2: "1.2.3"
+        
+    Returns:
+        1 if ver1 > ver2
+        0 if ver1 == ver2
+        -1 if ver1 < ver2
+    """
+    v1 = packaging.version.Version(ver1)
+    v2 = packaging.version.Version(ver2)
+    if v1 == v2:
+        return 0
+    return 1 if v1 > v2 else -1

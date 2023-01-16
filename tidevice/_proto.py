@@ -310,6 +310,7 @@ class LockdownService(str, enum.Enum):
     InstrumentsRemoteServerSecure = "com.apple.instruments.remoteserver.DVTSecureSocketProxy"  # for iOS 14.0
     TestmanagerdLockdown = "com.apple.testmanagerd.lockdown"
     TestmanagerdLockdownSecure = "com.apple.testmanagerd.lockdown.secure"  # for iOS 14.0
+    AmfiLockdown = "com.apple.amfi.lockdown" # iOS >= 15.7
 
     
 

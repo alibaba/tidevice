@@ -42,7 +42,7 @@ from ._safe_socket import *
 from ._sync import Sync
 from ._types import DeviceInfo
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir, set_socket_timeout
+from ._utils import ProgressReader, get_app_dir, set_socket_timeout, semver_compare
 from .exceptions import *
 from .session import Session
 
@@ -463,32 +463,37 @@ class BaseDevice():
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
-    def _set_ios16_developer_mode(self, action: int = 0):
+    def enable_ios16_developer_mode(self):
         """
-        开启iOS 16开发者选项
+        enabling developer mode on iOS 16
+        """
+        is_developer = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
+        if is_developer:
+            return True
+        if self._send_action_to_amfi_lockdown(action=1) == 0xe6:
+            raise ServiceError("Device is rebooting in order to enable \"Developer Mode\"")
 
-        action:
-            0: Show "Developer Mode" Tab in Privacy & Security
-            1: Reboot device to dialog of Open "Developer Mode"
+        # https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device
+        resp_code = self._send_action_to_amfi_lockdown(action=0)
+        if resp_code == 0xd9:
+            raise ServiceError("Developer Mode is not opened, to enable Developer Mode goto Settings -> Privacy & Security -> Developer Mode")
+        else:
+            raise ServiceError("Failed to enable \"Developer Mode\"")
+    
+    def _send_action_to_amfi_lockdown(self, action: int) -> int:
         """
-        conn = self.start_service("com.apple.amfi.lockdown")
+        Args:
+            action:
+                0: Show "Developer Mode" Tab in Privacy & Security
+                1: Reboot device to dialog of Open "Developer Mode" (经过测试发现只有在设备没设置密码的情况下才能用)
+        """
+        conn = self.start_service(LockdownService.AmfiLockdown)
         body = plistlib2.dumps({"action": action})
         payload = struct.pack(">I", len(body)) + body
         conn.psock.sendall(payload)
-        resp = conn.psock.recv()
-        if resp == b'\x00\x00\x00\xd9':
-            return True
-        if resp == b'\x00\x00\x00\xe6':
-            return True
-        elif resp == b'\x00\x00\x00\xfd':
-            return False
-        else:
-            raise ServiceError("set_ios16_developer_mode failed", resp)
-
-    def _get_ios16_developer_mode_status(self) -> bool:
-        """ 获取开发者选项是否打开 """
-        status = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
-        return status
+        rawdata = conn.psock.recv()
+        (resp_code,) = struct.unpack(">I", rawdata[:4])
+        return resp_code
 
     def start_service(self, name: str) -> PlistSocketProxy:
         try:
@@ -655,13 +660,10 @@ class BaseDevice():
     def mount_developer_image(self):
         """
         Raises:
-            MuxError
+            MuxError, ServiceError
         """
-        if self.major_version() >= 16:
-            is_developer = self._get_ios16_developer_mode_status()
-            if not is_developer:
-                print("Restarting device in order to open Developer Mode")
-                self._set_ios16_developer_mode(1)
+        if semver_compare(self.product_version, "15.7") >= 0:
+            self.enable_ios16_developer_mode()
         try:
             if self.imagemounter.is_developer_mounted():
                 logger.info("DeveloperImage already mounted")
