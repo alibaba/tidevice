@@ -44,7 +44,7 @@ def get_developer_image_url_list(version: str) -> typing.List[str]:
     github_repo = "JinjunHan/iOSDeviceSupport"
 
     zip_name = f"{version}.zip"
-    origin_url = f"https://github.com/{github_repo}/raw/master/DeviceSupport/{zip_name}"
+    origin_url = f"https://github.com/{github_repo}/raw/master/iOSDeviceSupport/{zip_name}"
     mirror_url = origin_url.replace("https://github.com", "https://tool.appetizer.io")
     return (mirror_url, origin_url)
 
