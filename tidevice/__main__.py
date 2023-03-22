@@ -405,7 +405,7 @@ def cmd_battery(args: argparse.Namespace):
             else:
                 value = info
                 for key in keypath:
-                    value = value[key]
+                    value = value.get(key, {})
             if callable(unit):
                 value = unit(value)
                 unit = ""
@@ -814,6 +814,7 @@ _commands = [
     dict(
         action=cmd_xctest,
         command="xctest",
+        aliases=['xcuitest'],
         flags=[
             dict(args=['--debug'], action='store_true', help='show debug log'),
             dict(args=['-B', '--bundle_id', '--bundle-id'],
@@ -828,7 +829,7 @@ _commands = [
                  action='append',
                  help="set env with format key:value, support multi -e"),
         ],
-        help="run XCTest"),
+        help="run XCTest (XCUITest)"),
     dict(
         action=cmd_wdaproxy,
         command='wdaproxy',
@@ -941,8 +942,10 @@ def main():
     actions = {}
     for c in _commands:
         cmd_name = c['command']
-        actions[cmd_name] = c['action']
-        sp = subparser.add_parser(cmd_name, help=c.get('help'),
+        cmd_aliases = c.get('aliases', [])
+        for alias in [cmd_name] + cmd_aliases:
+            actions[alias] = c['action']
+        sp = subparser.add_parser(cmd_name, aliases=cmd_aliases, help=c.get('help'),
                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         for f in c.get('flags', []):
             args = f.get('args')

@@ -42,7 +42,9 @@ from ._safe_socket import *
 from ._sync import Sync
 from ._types import DeviceInfo
 from ._usbmux import Usbmux
-from ._utils import ProgressReader, get_app_dir, set_socket_timeout, semver_compare
+from ._utils import (ProgressReader, get_app_dir, semver_compare,
+                     set_socket_timeout)
+from .datatypes import *
 from .exceptions import *
 from .session import Session
 
@@ -289,6 +291,9 @@ class BaseDevice():
             port: int = LOCKDOWN_PORT,  # 0xf27e,
             _ssl: bool = False,
             ssl_dial_only: bool = False) -> PlistSocketProxy:
+        """
+        make connection to iphone inner port
+        """
         device_id = self.info.device_id
         conn = self._usbmux.connect_device_port(device_id, port)
         if _ssl:
@@ -300,6 +305,9 @@ class BaseDevice():
         return conn
 
     def create_session(self) -> Session:
+        """
+        create secure connection to lockdown service
+        """
         s = self.create_inner_connection()
         data = s.send_recv_packet({"Request": "QueryType"})
         assert data['Type'] == LockdownService.MobileLockdown
@@ -393,33 +401,35 @@ class BaseDevice():
         """
         self.set_value("com.apple.Accessibility", "AssistiveTouchEnabledByiTunes", enabled)
 
-    def screen_info(self) -> tuple:
+    def screen_info(self) -> ScreenInfo:
         info = self.device_info("com.apple.mobile.iTunes")
-        return {
+        kwargs = {
             "width": info['ScreenWidth'],
             "height": info['ScreenHeight'],
             "scale": info['ScreenScaleFactor'],  # type: float
         }
+        return ScreenInfo(**kwargs)
 
-    def battery_info(self) -> dict:
+    def battery_info(self) -> ScreenInfo:
         info = self.device_info('com.apple.mobile.battery')
-        return {
-            "level": info['BatteryCurrentCapacity'],
-        }
+        return BatteryInfo(
+            level=info['BatteryCurrentCapacity'],
+            is_charging=info.get('BatteryIsCharging'),
+            external_charge_capable=info.get('ExternalChargeCapable'),
+            external_connected=info.get('ExternalConnected'),
+            fully_charged=info.get('FullyCharged'),
+            gas_gauge_capability=info.get('GasGaugeCapability'),
+            has_battery=info.get('HasBattery')
+        )
 
-    def storage_info(self) -> dict:
+    def storage_info(self) -> StorageInfo:
         """ the unit might be 1000 not 1024 """
         info = self.device_info('com.apple.disk_usage')
         disk = info['TotalDiskCapacity']
         size = info['TotalDataCapacity']
         free = info['TotalDataAvailable']
         used = size - free
-        return {
-            "disk_size": disk,
-            "used": used,
-            "free": free,
-            # "free_percent": free * 100 / size + 2), 10) + '%'
-        }
+        return StorageInfo(disk_size=disk, used=used, free=free)
 
     def reboot(self) -> str:
         """ reboot device """
@@ -575,7 +585,7 @@ class BaseDevice():
             yield pil_imread(png_data)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.get_value("DeviceName", no_session=True)
 
     @property
@@ -821,10 +831,6 @@ class BaseDevice():
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
 
         return ServiceInstruments(conn)
-    
-    @deprecated(details="use connect_instruments instead")
-    def instruments_context(self) -> typing.Generator[ServiceInstruments, None, None]:
-        return self.connect_instruments()
         
     def _launch_app_runner(self,
                     bundle_id: str,
