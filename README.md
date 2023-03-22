@@ -389,6 +389,7 @@ Python code style(ZH): https://zh-google-styleguide.readthedocs.io/en/latest/goo
 - <https://github.com/danielpaulus/go-ios>
 - Go implemented: <https://github.com/electricbubble/gidevice>
 - https://github.com/SonicCloudOrg/sonic-ios-bridge
+- https://github.com/doronz88/pymobiledevice3 这个库用到的服务很全，还是Python的，参考起来更方便
 
 ## Thanks
 - C implementation <https://github.com/libimobiledevice>
