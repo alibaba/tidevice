@@ -527,15 +527,19 @@ def cmd_fsync(args: argparse.Namespace):
 
     arg0 = args.arguments[0]
     if args.command == 'ls':
-        for filename in sync.listdir(arg0):
-            finfo = sync.stat(pathlib.Path(arg0) / filename)
+        tabdata = []
+        for finfo in sync.listdir_info(arg0):
+            filename = finfo.st_name
             if finfo.is_dir():
-                print(filename+"/")
-            else:
-                print("-", filename, finfo.st_size)
-    elif args.command == 'rm':
+                filename = filename + "/"
+            tabdata.append(['d' if finfo.is_dir() else '-', finfo.st_size, finfo.st_mtime, filename])
+        print(tabulate(tabdata,  tablefmt="plain"))
+    elif args.command == 'rm': # rm also support rmdir
         for arg in args.arguments:
             pprint(sync.remove(arg))
+    elif args.command == "touch":
+        for arg in args.arguments:
+            pprint(sync.touch(arg))
     elif args.command == 'stat':
         finfo = sync.stat(arg0)
         print("IFMT:", finfo.st_ifmt)
@@ -859,7 +863,7 @@ _commands = [
              dict(args=['command'],
                   choices=[
                       'ls', 'rm', 'cat', 'pull', 'push', 'stat', 'tree',
-                      'rmtree', 'mkdir'
+                      'rmtree', 'mkdir', 'touch'
                   ]),
              dict(args=['arguments'], nargs='+', help='command arguments'),
          ],

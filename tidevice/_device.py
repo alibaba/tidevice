@@ -463,15 +463,17 @@ class BaseDevice():
         copy_conn = self.start_service(LockdownService.CRASH_REPORT_COPY_MOBILE_SERVICE)
         return CrashManager(copy_conn)
 
-    def enable_ios16_developer_mode(self):
+    def enable_ios16_developer_mode(self, reboot_ok: bool = False):
         """
         enabling developer mode on iOS 16
         """
         is_developer = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
         if is_developer:
             return True
-        if self._send_action_to_amfi_lockdown(action=1) == 0xe6:
-            raise ServiceError("Device is rebooting in order to enable \"Developer Mode\"")
+        
+        if reboot_ok:
+            if self._send_action_to_amfi_lockdown(action=1) == 0xe6:
+                raise ServiceError("Device is rebooting in order to enable \"Developer Mode\"")
 
         # https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device
         resp_code = self._send_action_to_amfi_lockdown(action=0)

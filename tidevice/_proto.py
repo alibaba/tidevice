@@ -3,7 +3,7 @@
 #
 
 __all__ = [
-    'Color', 'AFC_MAGIC', 'AFC', 'AFCStatus', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
+    'Color', 'AFC_MAGIC', 'AFCMode', 'AFC', 'AFCStatus', 'AFCPacket', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
     "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult"
 ]
@@ -11,6 +11,7 @@ __all__ = [
 from dataclasses import dataclass
 import datetime
 import enum
+import typing
 
 
 class LOG(str, enum.Enum):
@@ -63,6 +64,16 @@ PROGRAM_NAME = "tidevice"
 AFC_MAGIC = b"CFA6LPAA"
 
 
+class AFCMode(enum.IntEnum):
+    """ file open mode"""
+    O_RDONLY = 0x00000001  #/**< r   O_RDONLY
+    O_RW = 0x00000002  #/**< r+  O_RDWR   | O_CREAT
+    O_WRONLY = 0x00000003  #/**< w   O_WRONLY | O_CREAT  | O_TRUNC
+    O_WR = 0x00000004  #/**< w+  O_RDWR   | O_CREAT  | O_TRUNC
+    O_APPEND = 0x00000005  #/**< a   O_WRONLY | O_APPEND | O_CREAT
+    O_RDAPPEND = 0x00000006  #/**< a+  O_RDWR   | O_APPEND | O_CREAT
+
+
 class AFC(enum.IntEnum):
     OP_INVALID = 0x00000000
     OP_STATUS = 0x00000001
@@ -96,13 +107,6 @@ class AFC(enum.IntEnum):
     OP_SET_FILE_TIME = 0x0000001E  # set st_mtime
     OP_GET_FILE_HASH_RANGE = 0x0000001F  # GetFileHashWithRange
 
-    O_RDONLY = 0x00000001  #/**< r   O_RDONLY
-    O_RW = 0x00000002  #/**< r+  O_RDWR   | O_CREAT
-    O_WRONLY = 0x00000003  #/**< w   O_WRONLY | O_CREAT  | O_TRUNC
-    O_WR = 0x00000004  #/**< w+  O_RDWR   | O_CREAT  | O_TRUNC
-    O_APPEND = 0x00000005  #/**< a   O_WRONLY | O_APPEND | O_CREAT
-    O_RDAPPEND = 0x00000006  #/**< a+  O_RDWR   | O_APPEND | O_CREAT
-
     HARDLINK = 1
     SYMLINK = 2
 
@@ -110,69 +114,45 @@ class AFC(enum.IntEnum):
     LOCK_EX = 2 | 4  #/**< exclusive lock
     LOCK_UN = 8 | 4  #/**< unlock
 
-    # #// Status
-    # ST_SUCCESS                = 0
-    # ST_UNKNOWN_ERROR          = 1
-    # ST_OP_HEADER_INVALID      = 2
-    # ST_NO_RESOURCES           = 3
-    # ST_READ_ERROR             = 4
-    # ST_WRITE_ERROR            = 5
-    # ST_UNKNOWN_PACKET_TYPE    = 6
-    # ST_INVALID_ARG            = 7
-    # ST_OBJECT_NOT_FOUND       = 8
-    # ST_OBJECT_IS_DIR          = 9
-    # ST_PERM_DENIED            =10
-    # ST_SERVICE_NOT_CONNECTED  =11
-    # ST_OP_TIMEOUT             =12
-    # ST_TOO_MUCH_DATA          =13
-    # ST_END_OF_DATA            =14
-    # ST_OP_NOT_SUPPORTED       =15
-    # ST_OBJECT_EXISTS          =16
-    # ST_OBJECT_BUSY            =17
-    # ST_NO_SPACE_LEFT          =18
-    # ST_OP_WOULD_BLOCK         =19
-    # ST_IO_ERROR               =20
-    # ST_OP_INTERRUPTED         =21
-    # ST_OP_IN_PROGRESS         =22
-    # ST_INTERNAL_ERROR         =23
-
-    # ST_MUX_ERROR              =30
-    # ST_NO_MEM                 =31
-    # ST_NOT_ENOUGH_DATA        =32
-    # ST_DIR_NOT_EMPTY          =33
-
 
 @enum.unique
 class AFCStatus(enum.IntEnum):
-    SUCCESS = 0
-    UNKNOWN_ERROR = 1
-    OP_HEADER_INVALID = 2
-    NO_RESOURCES = 3
-    READ_ERROR = 4
-    WRITE_ERROR = 5
-    UNKNOWN_PACKET_TYPE = 6
-    INVALID_ARG = 7
-    OBJECT_NOT_FOUND = 8
-    OBJECT_IS_DIR = 9
-    PERM_DENIED = 10
-    SERVICE_NOT_CONNECTED = 11
-    OP_TIMEOUT = 12
-    TOO_MUCH_DATA = 13
-    END_OF_DATA = 14
-    OP_NOT_SUPPORTED = 15
-    OBJECT_EXISTS = 16
-    OBJECT_BUSY = 17
-    NO_SPACE_LEFT = 18
-    OP_WOULD_BLOCK = 19
-    IO_ERROR = 20
-    OP_INTERRUPTED = 21
-    OP_IN_PROGRESS = 22
-    INTERNAL_ERROR = 23
+    ST_SUCCESS = 0
+    ST_UNKNOWN_ERROR = 1
+    ST_OP_HEADER_INVALID = 2
+    ST_NO_RESOURCES = 3
+    ST_READ_ERROR = 4
+    ST_WRITE_ERROR = 5
+    ST_UNKNOWN_PACKET_TYPE = 6
+    ST_INVALID_ARG = 7
+    ST_OBJECT_NOT_FOUND = 8
+    ST_OBJECT_IS_DIR = 9
+    ST_PERM_DENIED = 10
+    ST_SERVICE_NOT_CONNECTED = 11
+    ST_OP_TIMEOUT = 12
+    ST_TOO_MUCH_DATA = 13
+    ST_END_OF_DATA = 14
+    ST_OP_NOT_SUPPORTED = 15
+    ST_OBJECT_EXISTS = 16
+    ST_OBJECT_BUSY = 17
+    ST_NO_SPACE_LEFT = 18
+    ST_OP_WOULD_BLOCK = 19
+    ST_IO_ERROR = 20
+    ST_OP_INTERRUPTED = 21
+    ST_OP_IN_PROGRESS = 22
+    ST_INTERNAL_ERROR = 23
 
-    MUX_ERROR = 30
-    NO_MEM = 31
-    NOT_ENOUGH_DATA = 32
-    DIR_NOT_EMPTY = 33
+    ST_MUX_ERROR = 30
+    ST_NO_MEM = 31
+    ST_NOT_ENOUGH_DATA = 32
+    ST_DIR_NOT_EMPTY = 33
+
+
+class AFCPacket(typing.NamedTuple):
+    status: AFCStatus
+    data: bytes # contains fd when open file, other time always empty
+    payload: bytes
+    
 
 # See also: https://www.theiphonewiki.com/wiki/Models
 MODELS = {
@@ -340,6 +320,7 @@ class UsbmuxReplyCode(int, enum.Enum):
 
 @dataclass
 class StatResult:
+    st_name: str
     st_ifmt: str
     st_size: int
     st_blocks: int

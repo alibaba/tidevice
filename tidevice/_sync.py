@@ -95,7 +95,7 @@ class Sync(PlistSocketProxy):
         data = buf[:fheader.this_len - FHeader.size]
         payload = buf[fheader.this_len - FHeader.size:]
 
-        status = AFCStatus.SUCCESS
+        status = AFCStatus.ST_SUCCESS
         if fheader.operation == AFC.OP_STATUS:
             (status, ) = struct.unpack("<Q", data)
         elif fheader.operation not in [
@@ -103,11 +103,9 @@ class Sync(PlistSocketProxy):
         ]:
             logger.info("Unknown FHeader operation: %s",
                         AFC(fheader.operation))
-        return namedtuple("AFCPacket",
-                          ['status', 'data', 'payload'])(AFCStatus(status),
-                                                         data, payload)
+        return AFCPacket(AFCStatus(status), data, payload)
 
-    def _request(self, op: AFC, data: bytes, payload: bytes = b''):
+    def _request(self, op: AFC, data: bytes, payload: bytes = b'') -> AFCPacket:
         self._send(op, data, payload)
         return self._recv()
 
@@ -124,6 +122,18 @@ class Sync(PlistSocketProxy):
                 continue
             fnames.append(fname)
         return fnames
+    
+    def listdir_info(self, dpath: typing.Union[str, pathlib.Path]) -> typing.List[StatResult]:
+        """ stat for all files in a directory """
+        dinfo = self.stat(dpath)
+        if not dinfo.is_dir():
+            return [dinfo]
+        infos = []
+        for filename in self.listdir(dpath):
+            finfo = self.stat(pathlib.Path(dpath) / filename)
+            infos.append(finfo)
+        infos.sort(key=lambda x: (x.is_dir(), x.st_mtime), reverse=True)
+        return infos
 
     def _pad00(self, filename: str):
         return filename.encode('utf-8') + b'\x00'
@@ -159,6 +169,14 @@ class Sync(PlistSocketProxy):
                             self._pad00(src) + self._pad00(dst))
         return pkg.status
 
+    def touch(self, dst: str):
+        """ can only create file, unable to update file modify time
+
+        TODO: update mtime with AFC.OP_SET_FILE_TIME
+        """
+        with self._context_open(dst, AFCMode.O_APPEND) as fd:
+            self._file_write(fd, b'')
+    
     def stat(self, fpath: typing.Union[str, pathlib.Path], with_error: bool = False) -> StatResult:
         """
         Returns:
@@ -181,12 +199,11 @@ class Sync(PlistSocketProxy):
         if isinstance(fpath, pathlib.Path):
             fpath = fpath.as_posix()
         pkg = self._request(AFC.OP_GET_FILE_INFO, fpath.encode('utf-8'))
-        if pkg.status != AFCStatus.SUCCESS:
+        if pkg.status != AFCStatus.ST_SUCCESS:
             if with_error:
                 return None, AFCStatus(pkg.status)
             raise MuxError("stat {} - {!s}".format(fpath,
                                                    AFCStatus(pkg.status)))
-
         items = pkg.payload.rstrip(b"\x00").split(b'\x00')
         assert len(items) % 2 == 0
 
@@ -197,6 +214,7 @@ class Sync(PlistSocketProxy):
             result[key] = val
 
         kwargs = {}
+        kwargs['st_name'] = pathlib.Path(fpath).name
         kwargs['st_ifmt'] = result['st_ifmt']
         kwargs["st_linktarget"] = result.get("LinkTarget")
         for key in ('st_size', 'st_blocks', 'st_nlink'):
@@ -301,7 +319,7 @@ class Sync(PlistSocketProxy):
             root = pathjoin(top, dname)
             yield from self.walk(root, followlinks=followlinks)
 
-    def _file_open(self, path, open_mode=AFC.O_RDONLY) -> int:
+    def _file_open(self, path: str, open_mode: AFCMode = AFCMode.O_RDONLY) -> int:
         """
         Return file handle fd
         """
@@ -315,6 +333,22 @@ class Sync(PlistSocketProxy):
     def _file_close(self, fd: int):
         pkg = self._request(AFC.OP_FILE_CLOSE, struct.pack("<Q", fd))
         return pkg.status
+    
+    def _file_write(self, fd: int, data: bytes):
+        pkg = self._request(AFC.OP_WRITE,
+                            struct.pack("<Q", fd), data)
+        if pkg.status != 0:
+            raise MuxError("write error: {!s}".format(pkg.status))
+    
+    def _file_read(self, fd: int, size: int):
+        """
+        size: max size to read
+        """
+        pkg = self._request(AFC.OP_READ,
+                            struct.pack("<QQ", fd, size))
+        if pkg.status != 0:
+            raise MuxError("read error: {!s}".format(pkg.status))
+        return pkg.payload
 
     @contextlib.contextmanager
     def _context_open(self, path, open_mode):
@@ -333,17 +367,13 @@ class Sync(PlistSocketProxy):
         if info.is_link():
             path = info.st_linktarget
 
-        with self._context_open(path, AFC.O_RDONLY) as fd:
+        with self._context_open(path, AFCMode.O_RDONLY) as fd:
             left_size = info.st_size
             max_read_size = 1 << 16
             while left_size > 0:
-                pkg = self._request(AFC.OP_READ,
-                                    struct.pack("<QQ", fd, max_read_size))
-                if pkg.status != AFCStatus.SUCCESS:
-                    raise MuxError("read {} error, status {}".format(
-                        path, pkg.status))
-                left_size -= len(pkg.payload)
-                yield pkg.payload
+                chunk = self._file_read(fd, max_read_size)
+                left_size -= len(chunk)
+                yield chunk
 
     def pull(self,
              src: typing.Union[str, pathlib.Path],
@@ -391,7 +421,7 @@ class Sync(PlistSocketProxy):
 
     def push_content(self, path: str, data: Union[typing.IO, bytes,
                                                   bytearray]):
-        with self._context_open(path, AFC.O_WR) as fd:
+        with self._context_open(path, AFCMode.O_WR) as fd:
             chunk_size = 1 << 15
 
             if isinstance(data, io.IOBase):
@@ -403,6 +433,4 @@ class Sync(PlistSocketProxy):
                 chunk = buf.read(chunk_size)
                 if chunk == b'':
                     break
-                pkg = self._request(AFC.OP_WRITE, struct.pack("<Q", fd), chunk)
-                if pkg.status != 0:
-                    raise MuxError("write error: {!s}".format(pkg.status))
+                self._file_write(fd, chunk)
