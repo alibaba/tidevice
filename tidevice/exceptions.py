@@ -3,19 +3,20 @@
 #
 
 __all__ = [
-    'MuxError', 'MuxReplyError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
+    'BaseError', 'MuxError', 'MuxReplyError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
+    'SocketError',
     'IPAError'
 ]
 
 from ._proto import UsbmuxReplyCode
 
 
-class MuxError(OSError):
-    """ Mutex error """
+class BaseError(OSError):
     pass
 
 
-class IPAError(Exception):
+class MuxError(BaseError):
+    """ Mutex error """
     pass
 
 
@@ -26,12 +27,20 @@ class MuxReplyError(MuxError):
 
 
 class MuxVersionError(MuxError):
-    pass
+    """ usbmuxd version not match """
 
 
 class ServiceError(MuxError):
-    pass
+    """ Service error """
 
 
 class MuxServiceError(ServiceError):
     pass
+
+
+class SocketError(MuxError):
+    """ Socket timeout error """
+
+
+class IPAError(BaseError):
+    """ IPA error """

@@ -68,7 +68,7 @@ class SafeStreamSocket:
                 elif os.path.exists(addr):
                     family = socket.AF_UNIX
                 else:
-                    raise MuxError("socket unix:{} unable to connect".format(addr))
+                    raise SocketError("socket unix:{} unable to connect".format(addr))
             else:
                 family = socket.AF_INET
             self._sock = socket.socket(family, socket.SOCK_STREAM)
@@ -105,14 +105,28 @@ class SafeStreamSocket:
         return self._sock
 
     def recv(self, bufsize: int = 4096) -> bytes:
-        return self._sock.recv(bufsize)
+        """recv data from socket
+        Args:
+            bufsize: buffer size
+
+        Raises:
+            SocketError
+        """
+        try:
+            return self._sock.recv(bufsize)
+        except socket.timeout as e:
+            raise SocketError("socket timeout") from e
+        except ssl.SSLError as e:
+            raise SocketError("ssl error") from e
+        except Exception as e:
+            raise SocketError("socket error") from e
 
     def recvall(self, size: int) -> bytearray:
         buf = bytearray()
         while len(buf) < size:
-            chunk = self._sock.recv(size - len(buf))
+            chunk = self.recv(size-len(buf))
             if not chunk:
-                raise ConnectionError("socket connection broken")
+                raise SocketError("recvall: socket connection broken")
             buf.extend(chunk)
         return buf
 
@@ -133,6 +147,7 @@ class SafeStreamSocket:
         # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
         context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         try:
+            context.verify_mode = ssl.CERT_NONE # try to fix ssl.SSLEOFError: EOF occurred in violation of protocol (_ssl.c:1123)
             context.set_ciphers("ALL:@SECLEVEL=0") # fix md_too_weak error
         except ssl.SSLError:
             # ignore: no ciphers can be selected.

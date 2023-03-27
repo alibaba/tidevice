@@ -628,7 +628,6 @@ class DTXService(PlistSocketProxy):
             self._call_handlers(Event.NOTIFICATION, None)
             self._call_handlers(Event.OTHER, None)
             self._call_handlers(Event.FINISHED, None)
-            # print("all quited")
 
     def _drain_single_message(self):
         mheader, payload = self.recv_dtx_message()
