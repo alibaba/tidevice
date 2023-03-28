@@ -12,8 +12,8 @@ import typing
 import uuid
 from typing import Optional, Union
 
-from ._types import DeviceInfo, ConnectionType
-from ._proto import PROGRAM_NAME, UsbmuxReplyCode, LOG
+from ._types import DeviceInfo
+from ._proto import PROGRAM_NAME, ConnectionType, UsbmuxReplyCode, LOG
 from ._safe_socket import PlistSocket, PlistSocketProxy
 from .exceptions import * # pragma warning disables S2208
 
@@ -81,10 +81,10 @@ class Usbmux:
         result = {}
         for item in data['DeviceList']:
             prop = item['Properties']
-            info = DeviceInfo()
-            info.udid = prop['SerialNumber']
-            info.device_id = prop['DeviceID']
-            info.conn_type = prop['ConnectionType'].lower()
+            prop['ConnectionType'] = prop['ConnectionType'].lower() # 兼容旧代码
+            info = DeviceInfo.from_json(prop)
+
+            # always skip network device
             if info.udid in result and info.conn_type == ConnectionType.NETWORK:
                 continue
             result[info.udid] = info

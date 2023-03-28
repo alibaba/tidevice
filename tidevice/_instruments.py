@@ -338,7 +338,6 @@ class DTXService(PlistSocketProxy):
             return self._channels[identifier]
 
         channel_id = self._next_channel_id()
-        args = [channel_id, identifier]
         aux = AUXMessageBuffer()
         aux.append_u32(channel_id)
         aux.append_obj(identifier)
@@ -683,10 +682,21 @@ class ServiceInstruments(DTXService):
 
     def app_launch(self,
                    bundle_id: str,
-                   app_env: dict = {},
-                   args: list = [],
-                   kill_running: bool = False) -> int:
+                   app_env: typing.Dict[str, str] = {},
+                   args: typing.List[str] = [],
+                   kill_running: bool = True) -> int:
         """
+        Launch an app with bundle id
+
+        Args:
+            bundle_id: bundle id of the app
+            app_env: environment variables
+            args: arguments
+            kill_running: deprecated argument, useless now
+
+        Returns:
+            pid of the app
+
         Raises:
             ServiceError
         """
@@ -698,8 +708,8 @@ class ServiceInstruments(DTXService):
         options = {
             # don't suspend the process after starting it
             "StartSuspendedKey": 0,
-            # kill the application if it is already running
-            "KillExisting": kill_running,
+            # Note: set KillExisting to False and call 60+ times, instruments service will crash
+            "KillExisting": True,
             # I donot know much about it, when set to True, app will have a pid, but not show up
             # "ActivateSuspended": False,
         }
@@ -738,16 +748,18 @@ class ServiceInstruments(DTXService):
         """
         Args:
             app_infos: value from self.instrumentation.app_list()
-        Returns yield of
-        {
-            'isApplication': True,
-            'name': 'timed',
-            'pid': 58,
-            'realAppName': '/usr/libexec/timed',
-            'startDate': datetime.datetime(2020, 5, 25, 2, 22, 29, 603427)},
-            'bundle_id': 'com.libexec.xxx',
-            'display_name': "xxxxx",
-        }
+        
+        Returns:
+            yield of
+            {
+                'isApplication': True,
+                'name': 'timed',
+                'pid': 58,
+                'realAppName': '/usr/libexec/timed',
+                'startDate': datetime.datetime(2020, 5, 25, 2, 22, 29, 603427)},
+                'bundle_id': 'com.libexec.xxx',
+                'display_name': "xxxxx",
+            }
         """
         def exefile2appinfo(exe_abspath: str, app_infos: List[dict]):
             for info in app_infos:

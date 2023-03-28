@@ -15,7 +15,7 @@ import typing
 import weakref
 from typing import Any, Union
 
-from ._proto import PROGRAM_NAME
+from ._proto import PROGRAM_NAME, UsbmuxMessageType
 from ._utils import set_socket_timeout
 from .exceptions import *
 
@@ -46,11 +46,11 @@ def release_uid(id: int):
 
 
 class SafeStreamSocket:
-    def __init__(self, addr: Union[str, tuple, socket.socket,
+    def __init__(self, addr: Union[str, typing.Tuple[str, int], socket.socket,
                                    Any]):
         """
         Args:
-            addr: can be /var/run/usbmuxd or (localhost, 27015)
+            addr: can be /var/run/usbmuxd or localhost:27015 or (localhost, 27015)
         """
         self._id = acquire_uid()
         self._sock = None
@@ -131,7 +131,10 @@ class SafeStreamSocket:
         return buf
 
     def sendall(self, data: Union[bytes, bytearray]) -> int:
-        return self._sock.sendall(data)
+        try:
+            return self._sock.sendall(data)
+        except Exception as e:
+            raise SocketError("sendall error") from e
 
     def ssl_unwrap(self):
         assert isinstance(self._sock, ssl.SSLSocket)
@@ -180,10 +183,10 @@ class PlistSocket(SafeStreamSocket):
     def prepare(self):
         pass
 
-    def is_secure(self):
+    def is_secure(self) -> bool:
         return isinstance(self._sock, ssl.SSLSocket)
 
-    def send_packet(self, payload: dict, message_type: int = 8):
+    def send_packet(self, payload: dict, message_type: int = UsbmuxMessageType.PLIST):
         """
         Args:
             payload: required
@@ -192,9 +195,6 @@ class PlistSocket(SafeStreamSocket):
             message_type: 8 (Plist)
             tag: int
         """
-        #if self.is_secure():
-        #    logger.debug(secure_text + " send: {}", payload)
-        #else:
         logger.debug("SEND({}): {}", self.id, payload)
 
         body_data = plistlib.dumps(payload)
@@ -222,10 +222,6 @@ class PlistSocket(SafeStreamSocket):
         if 'PairRecordData' in payload:
             logger.debug("Recv pair record data ...")
         else:
-            # if self.is_secure():
-            #    logger.debug(secure_text + " recv" + Color.END + ": {}",
-            #                 payload)
-            # else:
             logger.debug("RECV({}): {}", self.id, payload)
         return payload
 

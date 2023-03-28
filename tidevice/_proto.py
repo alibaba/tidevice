@@ -5,7 +5,7 @@
 __all__ = [
     'Color', 'AFC_MAGIC', 'AFCMode', 'AFC', 'AFCStatus', 'AFCPacket', 'LOCKDOWN_PORT', 'PROGRAM_NAME',
     'SYSMON_PROC_ATTRS', 'SYSMON_SYS_ATTRS', 'MODELS', 'LockdownService',
-    "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult"
+    "UsbmuxReplyCode", "InstrumentsService", "LOG", "StatResult", "UsbmuxMessageType", "ConnectionType"
 ]
 
 from dataclasses import dataclass
@@ -152,7 +152,7 @@ class AFCPacket(typing.NamedTuple):
     status: AFCStatus
     data: bytes # contains fd when open file, other time always empty
     payload: bytes
-    
+
 
 # See also: https://www.theiphonewiki.com/wiki/Models
 MODELS = {
@@ -265,16 +265,11 @@ MODELS = {
 }
 
 
-class UsbmuxMessageType(str, enum.Enum):
-    Attached = "Attached"
-    Detached = "Detached"
-
-
 class LockdownService(str, enum.Enum):
     # hdiutil mount /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/14.0/DeveloperDiskImage.dmg
     # tree /Volumes/DeveloperDiskImage/Library/Lockdown
     MobileLockdown = 'com.apple.mobile.lockdown'
-    
+
     CRASH_REPORT_MOVER_SERVICE = "com.apple.crashreportmover"
     CRASH_REPORT_COPY_MOBILE_SERVICE = "com.apple.crashreportcopymobile"
 
@@ -291,8 +286,6 @@ class LockdownService(str, enum.Enum):
     TestmanagerdLockdown = "com.apple.testmanagerd.lockdown"
     TestmanagerdLockdownSecure = "com.apple.testmanagerd.lockdown.secure"  # for iOS 14.0
     AmfiLockdown = "com.apple.amfi.lockdown" # iOS >= 15.7
-
-    
 
 
 class InstrumentsService(str, enum.Enum):
@@ -331,13 +324,22 @@ class StatResult:
 
     def is_dir(self) -> bool:
         return self.st_ifmt == "S_IFDIR"
-    
+
     def is_link(self) -> bool:
         return self.st_ifmt == "S_IFLNK"
 
 
 
+class UsbmuxMessageType(enum.IntEnum):
+    RESULT = 1
+    CONNECT = 2
+    LISTEN = 3
+    ADD = 4
+    REMOVE = 5
+    PAIRED = 6
+    PLIST = 8
 
-if __name__ == "__main__":
-    print(Color.wrap_text("Hello", Color.RED))
-    print(AFC.GET_DEVINFO)
+
+class ConnectionType(str, enum.Enum):
+    USB = "usb"
+    NETWORK = "network"

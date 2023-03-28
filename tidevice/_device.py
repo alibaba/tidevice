@@ -73,16 +73,6 @@ class BaseDevice():
     def __init__(self,
                  udid: Optional[str] = None,
                  usbmux: Union[Usbmux, str, None] = None):
-        if udid is None:
-            udid = os.environ.get("TMQ_DEVICE_UDID")
-            if udid:
-                logger.info("use udid from env: %s=%s", "TMQ_DEVICE_UDID",
-                            udid)
-        if usbmux is None:
-            usbmux = os.environ.get("TMQ_USBMUX")
-            if usbmux:
-                logger.info("use usbmux from env: %s=%s", "TMQ_USBMUX", usbmux)
-
         if not usbmux:
             self._usbmux = Usbmux()
         elif isinstance(usbmux, str):

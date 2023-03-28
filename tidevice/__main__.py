@@ -28,9 +28,8 @@ from ._device import Device
 from ._imagemounter import cache_developer_image
 from ._ipautil import IPAReader
 from ._perf import DataType
-from ._proto import LOG, MODELS, PROGRAM_NAME
+from ._proto import LOG, MODELS, PROGRAM_NAME, ConnectionType
 from ._relay import relay
-from ._types import ConnectionType
 from ._usbmux import Usbmux
 from ._utils import get_app_dir, get_binary_by_name, is_atty
 from ._version import __version__
