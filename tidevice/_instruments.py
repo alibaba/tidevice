@@ -703,7 +703,6 @@ class ServiceInstruments(DTXService):
         code = self.make_channel(self._SERVICE_PROCESS_CONTROL)
         method = "launchSuspendedProcessWithDevicePath:bundleIdentifier:environment:arguments:options:"
         app_path = ""  # not used, just pass empty string
-        #app_args = []  # not used, just pass empty array
 
         options = {
             # don't suspend the process after starting it
