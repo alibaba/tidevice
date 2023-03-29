@@ -811,7 +811,7 @@ class BaseDevice():
 
     # 2022-08-24 add retry delay, looks like sometime can recover
     # BrokenPipeError(ConnectionError)
-    @retry((ssl.SSLError, socket.timeout, BrokenPipeError), delay=10, jitter=1, tries=3, logger=logging)
+    @retry(SocketError, delay=5, jitter=3, tries=3, logger=logging)
     def connect_instruments(self) -> ServiceInstruments:
         """ start service for instruments """
         if self.major_version() >= 14:
