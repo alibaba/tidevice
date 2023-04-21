@@ -133,7 +133,7 @@ def iter_screenshot(d: BaseDevice) -> Iterator[Tuple[DataType, dict]]:
         # img.save(buf, format="JPEG")
 
         # turn image to URL
-        yield DataType.SCREENSHOT, {"time": _time, "value": img, "img_str": img_str, "screenshot": "screenshot"}
+        yield DataType.SCREENSHOT, {"time": _time, "value": img, "img_str": img_str, "type": "screenshot"}
 
 
 ProcAttrs = namedtuple("ProcAttrs", SYSMON_PROC_ATTRS)
