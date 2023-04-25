@@ -122,7 +122,7 @@ def iter_gpu(d: BaseDevice) -> Iterator[Any]:
 def iter_screenshot(d: BaseDevice) -> Iterator[Tuple[DataType, dict]]:
     for img in d.iter_screenshot():
         _time = time.time()
-        img.thumbnail((500, 500))  # 缩小图片已方便保存
+        img.thumbnail((200, 200))  # 缩小图片已方便保存
         
         buffered = BytesIO()
         img.save(buffered, format="JPEG")
