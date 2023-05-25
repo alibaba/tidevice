@@ -6,6 +6,9 @@
 Same as iproxy
 """
 
+import select
+import socket
+import time
 import colored
 import simple_tornado
 from logzero import logger
@@ -17,6 +20,12 @@ from ._device import Device
 from ._hexdump import hexdump
 from ._safe_socket import PlistSocketProxy
 from .exceptions import MuxReplyError
+
+
+# Changing the buffer_size and delay, you can improve the speed and bandwidth.
+# But when buffer get to high or delay go too down, you can broke things
+BUFFER_SIZE = 4096
+DELAY = 0.0001
 
 
 class RelayTCPServer(TCPServer):
@@ -74,6 +83,89 @@ class RelayTCPServer(TCPServer):
         plconn.close()
         self.__names.pop(_in, None)
 
+class Forward:
+    def __init__(self, d: Device, rport: int):
+        self.forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._d = d
+        self._rport = rport
+
+    def start(self, host, port):
+        try:
+            self._d.create_inner_connection()
+            self.forward.connect((host, port))
+            return self.forward
+        except Exception as e:
+            return False
+
+class TCPForwardServer:
+    input_list = []
+    channel = {}
+
+    def __init__(self, lhost: str, lport: int, rdev: Device, rport: int):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((lhost, lport))
+        server.listen(200)
+        self._server = server
+        self._rdev = rdev
+        self._rport = rport
+    
+    def main_loop(self):
+        self.input_list.append(self.server)
+        while True:
+            time.sleep(DELAY)
+            inputready, outputready, exceptready = select.select(self.input_list, [], [])
+            for self.s in inputready:
+                if self.s == self.server:
+                    self.on_accept()
+                    break
+
+                self.data = self.s.recv(BUFFER_SIZE)
+                if len(self.data) == 0:
+                    self.on_close()
+                else:
+                    self.on_recv()
+
+    def on_accept(self):
+        try:
+            sock_proxy = self._rdev.create_inner_connection(self._rport)
+            devicesock = sock_proxy.get_socket()
+        except Exception as e:
+            devicesock = None
+
+        clientsock, clientaddr = self._server.accept()
+        if devicesock:
+            print(clientaddr, "has connected")
+            self.input_list.append(clientsock)
+            self.input_list.append(devicesock)
+            self.channel[clientsock] = devicesock
+            self.channel[devicesock] = clientsock
+        else:
+            print("Can't establish connection with device inner server.")
+            print("Closing connection with client side", clientaddr)
+            clientsock.close()
+        
+    def on_close(self):
+        print(self.s.getpeername(), "has disconnected")
+        #remove objects from input_list
+        self.input_list.remove(self.s)
+        self.input_list.remove(self.channel[self.s])
+        out = self.channel[self.s]
+        # close the connection with client
+        self.channel[out].close()  # equivalent to do self.s.close()
+        # close the connection with remote server
+        self.channel[self.s].close()
+        # delete both objects from channel dict
+        del self.channel[out]
+        del self.channel[self.s]
+    
+    def on_recv(self):
+        data = self.data
+        # here we can parse and/or modify the data before send forward
+        # print(data)
+        self.channel[self.s].send(data)
+
+    
 
 def relay(d: Device, lport: int, rport: int, debug: bool = False):
     """
@@ -83,6 +175,9 @@ def relay(d: Device, lport: int, rport: int, debug: bool = False):
         lport: local port
         rport: remote port
     """
+    
+
+    
     simple_tornado.patch_for_windows()
     RelayTCPServer(device=d, device_port=rport, debug=debug).listen(lport)
 
