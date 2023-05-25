@@ -664,7 +664,7 @@ class BaseDevice():
         Raises:
             MuxError, ServiceError
         """
-        if semver_compare(self.product_version, "15.7.2") >= 0:
+        if semver_compare(self.product_version, "16.0.0") >= 0:
             self.enable_ios16_developer_mode()
         try:
             if self.imagemounter.is_developer_mounted():
