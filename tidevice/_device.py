@@ -400,7 +400,7 @@ class BaseDevice():
         }
         return ScreenInfo(**kwargs)
 
-    def battery_info(self) -> ScreenInfo:
+    def battery_info(self) -> BatteryInfo:
         info = self.device_info('com.apple.mobile.battery')
         return BatteryInfo(
             level=info['BatteryCurrentCapacity'],
