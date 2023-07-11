@@ -10,7 +10,6 @@ import pathlib
 import re
 import struct
 import typing
-from collections import namedtuple
 from typing import Iterator, List, Union
 
 from . import bplist

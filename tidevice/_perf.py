@@ -4,6 +4,7 @@
 """Created on Tue May 11 2021 16:30:17 by codeskyblue
 """
 
+import base64
 import enum
 import io
 import threading
@@ -124,16 +125,16 @@ def iter_screenshot(d: BaseDevice) -> Iterator[Tuple[DataType, dict]]:
         _time = time.time()
         img.thumbnail((200, 200))  # 缩小图片已方便保存
         
-        buffered = BytesIO()
+        buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue())
+        img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
         
         # example of convert image to bytes
         # buf = io.BytesIO()
         # img.save(buf, format="JPEG")
 
         # turn image to URL
-        yield DataType.SCREENSHOT, {"time": _time, "value": img, "img_str": img_str, "type": "screenshot"}
+        yield DataType.SCREENSHOT, {"time": _time, "value": img, "img_base64": img_str, "type": "screenshot"}
 
 
 ProcAttrs = namedtuple("ProcAttrs", SYSMON_PROC_ATTRS)

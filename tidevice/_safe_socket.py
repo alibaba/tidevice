@@ -81,7 +81,8 @@ class SafeStreamSocket:
         if self._dup_sock:
             self._dup_sock.shutdown(socket.SHUT_RDWR)
             self._dup_sock.close()
-        self._sock.shutdown(socket.SHUT_RDWR)
+        else:
+            self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
     def close(self):
