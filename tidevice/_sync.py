@@ -368,7 +368,7 @@ class Sync(PlistSocketProxy):
 
         with self._context_open(path, AFCMode.O_RDONLY) as fd:
             left_size = info.st_size
-            max_read_size = 1 << 16
+            max_read_size = 1 << 20
             while left_size > 0:
                 chunk = self._file_read(fd, max_read_size)
                 left_size -= len(chunk)
@@ -421,7 +421,7 @@ class Sync(PlistSocketProxy):
     def push_content(self, path: str, data: Union[typing.IO, bytes,
                                                   bytearray]):
         with self._context_open(path, AFCMode.O_WR) as fd:
-            chunk_size = 1 << 15
+            chunk_size = 1 << 20
 
             if isinstance(data, io.IOBase):
                 buf = data
