@@ -55,14 +55,13 @@ def cache_developer_image(version: str) -> str:
     """
     _alias = {
         "12.5": "12.4",
-        "16.2": "16.1",
+        "16.6": "16.5",
     }
     # https://github.com/alibaba/taobao-iphone-device/issues/258#issuecomment-1328728799
     # download image from https://github.com/iGhibli/iOS-DeviceSupport
     # 换了16.1好像也没什么卵用
     version_url_map = {
         "15.7": "https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/15.7(FromXcode_14.1_Release_Candidate_xip).zip",
-        #"16.1": "https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/16.1(FromXcode_14.1_Release_Candidate_xip).zip",
     }
 
     # Default download image from https://github.com/JinjunHan/iOSDeviceSupport
