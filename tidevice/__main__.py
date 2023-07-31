@@ -260,10 +260,35 @@ def cmd_xctest(args: argparse.Namespace):
         env[key] = val
     if env:
         logger.info("Launch env: %s", env)
+
+    test_process_args = []
+    for kv in args.args or []:
+        key, val = kv.split(":", 1)
+        test_process_args.extend([f'-{key}', val])
+    if test_process_args:
+        logger.info("Launch test process args: %s", test_process_args)
+
+    target_app_env = {}
+    target_app_env = dict(
+        token.split(":", 1) for token in args.target_app_env or []
+    )
+    if target_app_env:
+        logger.info("Target app env: %s", target_app_env)
+
+    target_app_args = []
+    for kv in args.target_app_args or []:
+        key, val = kv.split(":", 1)
+        target_app_args.extend([f'-{key}', val])
+    if target_app_args:
+        logger.info("Target app args: %s", target_app_args)
+
     d.xctest(args.bundle_id,
              target_bundle_id=args.target_bundle_id,
              logger=setup_logger(level=logging.INFO),
-             env=env)
+             env=env,
+             test_process_args=test_process_args,
+             target_app_env=target_app_env,
+             target_app_args=target_app_args)
 
 
 def cmd_screenshot(args: argparse.Namespace):
@@ -619,7 +644,7 @@ def cmd_perf(args: argparse.Namespace):
         perfs = []
         for _typename in args.perfs.split(","):
             perfs.append(DataType(_typename))
-    
+
     if (DataType.MEMORY in perfs or DataType.CPU in perfs) and not args.bundle_id:
         print('\033[1;31m error: the following arguments are required: -B/--bundle_id \033[0m')
         exit(-1)
@@ -968,7 +993,7 @@ def main():
 
     if args.trace:
         ulogger.enable(PROGRAM_NAME)
-        
+
     # log setup
     setup_logger(LOG.main,
         level=logging.DEBUG if os.getenv("DEBUG") in ("1", "on", "true") else logging.INFO)

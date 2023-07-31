@@ -53,7 +53,7 @@ logger = logging.getLogger(LOG.main)
 
 def pil_imread(data: Union[str, pathlib.Path, bytes, bytearray]) -> Image.Image:
     """ Convert data(path, binary) to PIL.Image.Image
-    
+
     Raises:
         TypeError
     """
@@ -158,7 +158,7 @@ class BaseDevice():
             win32: os.environ["ALLUSERSPROFILE"] + "/Apple/Lockdown/"
             darwin: /var/db/lockdown/
             linux: /var/lib/lockdown/
-        
+
         if ios version > 13.0
             get pair data from usbmuxd
         else:
@@ -470,7 +470,7 @@ class BaseDevice():
         is_developer = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
         if is_developer:
             return True
-        
+
         if reboot_ok:
             if self._send_action_to_amfi_lockdown(action=1) == 0xe6:
                 raise ServiceError("Device is rebooting in order to enable \"Developer Mode\"")
@@ -481,7 +481,7 @@ class BaseDevice():
             raise ServiceError("Developer Mode is not opened, to enable Developer Mode goto Settings -> Privacy & Security -> Developer Mode")
         else:
             raise ServiceError("Failed to enable \"Developer Mode\"")
-    
+
     def _send_action_to_amfi_lockdown(self, action: int) -> int:
         """
         Args:
@@ -716,7 +716,7 @@ class BaseDevice():
                   kill_running: bool = True) -> int:
         """
         start application
-        
+
         return pid
 
         Note: kill_running better to True, if set to False, launch 60 times will trigger instruments service stop
@@ -821,14 +821,17 @@ class BaseDevice():
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
 
         return ServiceInstruments(conn)
-        
+
     def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
                     env: dict = {},
                     target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
-                    quit_event: threading.Event = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
+                    quit_event: threading.Event = None,
+                    extra_args: Optional[list] = None,
+                    target_app_env: Optional[dict] = None,
+                    target_app_args: Optional[list] = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
 
         logger = logging.getLogger(LOG.xctest)
 
@@ -849,6 +852,8 @@ class BaseDevice():
             "testBundleURL": bplist.NSURL(None, f"file://{app_info['Path']}/PlugIns/{target_name}.xctest"),
             "sessionIdentifier": session_identifier,
             "targetApplicationBundleID": target_app_bundle_id,
+            "targetApplicationArguments": target_app_args or [],
+            "targetApplicationEnvironment": target_app_env or {},
         }))  # yapf: disable
 
         fsync = self.app_sync(bundle_id, command="VendContainer")
@@ -900,6 +905,7 @@ class BaseDevice():
             '-NSTreatUnknownArgumentsAsOpen', 'NO',
             '-ApplePersistenceIgnoreState', 'YES'
         ]
+        app_args.extend(extra_args or [])
         app_options = {'StartSuspendedKey': False}
         if self.major_version() >= 12:
             app_options['ActivateSuspended'] = True
@@ -978,13 +984,24 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None, logger=None, env: dict={}):
+    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None,
+               logger=None, env: dict={},
+               test_process_args: Optional[list]=None,
+               target_app_env: Optional[dict]=None,
+               target_app_args: Optional[list]=None):
         """ Alias of xcuitest """
         bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
-        return self.xcuitest(bundle_id, target_bundle_id=target_bundle_id, logger=logger, env=env)
+        return self.xcuitest(bundle_id, target_bundle_id=target_bundle_id,
+                             logger=logger, env=env,
+                             test_process_args=test_process_args,
+                             target_app_env=target_app_env,
+                             target_app_args=target_app_args)
 
-    def xcuitest(self, bundle_id, target_bundle_id=None, logger=None, env: dict={}):
+    def xcuitest(self, bundle_id, target_bundle_id=None, logger=None,
+                 env: dict={}, test_process_args: Optional[list]=None,
+                 target_app_env: Optional[dict]=None,
+                 target_app_args: Optional[list]=None):
         """
         Launch xctrunner and wait until quit
 
@@ -1069,9 +1086,11 @@ class BaseDevice():
         # launch test app
         # index: 1540
         xclogger = setup_logger(name='xctest')
-        _, pid = self._launch_app_runner(bundle_id, session_identifier,
+        _, pid = self._launch_app_runner(
+            bundle_id, session_identifier,
             target_app_bundle_id=target_bundle_id,
-            env=env, logger=xclogger)
+            env=env, logger=xclogger, extra_args=test_process_args,
+            target_app_env=target_app_env, target_app_args=target_app_args)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored
