@@ -270,8 +270,7 @@ def cmd_xctest(args: argparse.Namespace):
 
     target_app_env = {}
     target_app_env = dict(
-        token.split(":", 1) for token in args.target_app_env or []
-    )
+        token.split(":", 1) for token in args.target_app_env or [])
     if target_app_env:
         logger.info("Target app env: %s", target_app_env)
 
@@ -644,7 +643,7 @@ def cmd_perf(args: argparse.Namespace):
         perfs = []
         for _typename in args.perfs.split(","):
             perfs.append(DataType(_typename))
-
+    
     if (DataType.MEMORY in perfs or DataType.CPU in perfs) and not args.bundle_id:
         print('\033[1;31m error: the following arguments are required: -B/--bundle_id \033[0m')
         exit(-1)
@@ -993,7 +992,7 @@ def main():
 
     if args.trace:
         ulogger.enable(PROGRAM_NAME)
-
+        
     # log setup
     setup_logger(LOG.main,
         level=logging.DEBUG if os.getenv("DEBUG") in ("1", "on", "true") else logging.INFO)
