@@ -53,7 +53,7 @@ logger = logging.getLogger(LOG.main)
 
 def pil_imread(data: Union[str, pathlib.Path, bytes, bytearray]) -> Image.Image:
     """ Convert data(path, binary) to PIL.Image.Image
-
+    
     Raises:
         TypeError
     """
@@ -158,7 +158,7 @@ class BaseDevice():
             win32: os.environ["ALLUSERSPROFILE"] + "/Apple/Lockdown/"
             darwin: /var/db/lockdown/
             linux: /var/lib/lockdown/
-
+        
         if ios version > 13.0
             get pair data from usbmuxd
         else:
@@ -470,7 +470,7 @@ class BaseDevice():
         is_developer = self.get_value("DeveloperModeStatus", domain="com.apple.security.mac.amfi")
         if is_developer:
             return True
-
+        
         if reboot_ok:
             if self._send_action_to_amfi_lockdown(action=1) == 0xe6:
                 raise ServiceError("Device is rebooting in order to enable \"Developer Mode\"")
@@ -481,7 +481,7 @@ class BaseDevice():
             raise ServiceError("Developer Mode is not opened, to enable Developer Mode goto Settings -> Privacy & Security -> Developer Mode")
         else:
             raise ServiceError("Failed to enable \"Developer Mode\"")
-
+    
     def _send_action_to_amfi_lockdown(self, action: int) -> int:
         """
         Args:
@@ -716,7 +716,7 @@ class BaseDevice():
                   kill_running: bool = True) -> int:
         """
         start application
-
+        
         return pid
 
         Note: kill_running better to True, if set to False, launch 60 times will trigger instruments service stop
@@ -821,7 +821,7 @@ class BaseDevice():
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
 
         return ServiceInstruments(conn)
-
+         
     def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
