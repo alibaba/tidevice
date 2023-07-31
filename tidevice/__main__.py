@@ -261,12 +261,12 @@ def cmd_xctest(args: argparse.Namespace):
     if env:
         logger.info("Launch env: %s", env)
 
-    test_process_args = []
-    for kv in args.test_process_args or []:
+    test_runner_args = []
+    for kv in args.test_runner_args or []:
         key, val = kv.split(":", 1)
-        test_process_args.extend([key, val])
-    if test_process_args:
-        logger.info("Launch test process args: %s", test_process_args)
+        test_runner_args.extend([key, val])
+    if test_runner_args:
+        logger.info("Launch test runner args: %s", test_runner_args)
 
     target_app_env = dict(
         token.split(":", 1) for token in args.target_app_env or [])
@@ -284,7 +284,7 @@ def cmd_xctest(args: argparse.Namespace):
              target_bundle_id=args.target_bundle_id,
              logger=setup_logger(level=logging.INFO),
              env=env,
-             test_process_args=test_process_args,
+             test_runner_args=test_runner_args,
              target_app_env=target_app_env,
              target_app_args=target_app_args)
 
@@ -850,9 +850,9 @@ _commands = [
             dict(args=['-e', '--env'],
                  action='append',
                  help="set env with format key:value, support multi -e"),
-            dict(args=['--test-process-args'],
+            dict(args=['--test-runner-args'],
                  action='append',
-                 help="set command line args to test process with format key:value, support multi --test-process-args"),
+                 help="set command line args to test runner with format key:value, support multi --test-runner-args"),
             dict(args=['--target-app-env'],
                  action='append',
                  help="set env to target app with format key:value, support multi --target-app-env"),

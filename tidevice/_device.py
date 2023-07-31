@@ -986,7 +986,7 @@ class BaseDevice():
 
     def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None,
                logger=None, env: dict={},
-               test_process_args: Optional[list]=None,
+               test_runner_args: Optional[list]=None,
                target_app_env: Optional[dict]=None,
                target_app_args: Optional[list]=None):
         """ Alias of xcuitest """
@@ -994,12 +994,12 @@ class BaseDevice():
         logger.info("BundleID: %s", bundle_id)
         return self.xcuitest(bundle_id, target_bundle_id=target_bundle_id,
                              logger=logger, env=env,
-                             test_process_args=test_process_args,
+                             test_runner_args=test_runner_args,
                              target_app_env=target_app_env,
                              target_app_args=target_app_args)
 
     def xcuitest(self, bundle_id, target_bundle_id=None, logger=None,
-                 env: dict={}, test_process_args: Optional[list]=None,
+                 env: dict={}, test_runner_args: Optional[list]=None,
                  target_app_env: Optional[dict]=None,
                  target_app_args: Optional[list]=None):
         """
@@ -1008,7 +1008,10 @@ class BaseDevice():
         Args:
             bundle_id (str): xctrunner bundle id
             target_bundle_id (str): optional, launch WDA-UITests will not need it
-            env: launch env
+            env (dict[str, str]): optional, the environment variables to be passed to the test runner 
+            test_runner_args (list[str]): optional, the command line arguments to be passed to the test runner
+            target_app_env (dict[str, str]): optional, the environmen variables to be passed to the target app
+            target_app_args (list[str]): optional, the command line arguments to be passed to the target app
         """
         if not logger:
             logger = setup_logger(level=logging.INFO)
@@ -1089,7 +1092,7 @@ class BaseDevice():
         _, pid = self._launch_app_runner(
             bundle_id, session_identifier,
             target_app_bundle_id=target_bundle_id,
-            env=env, logger=xclogger, extra_args=test_process_args,
+            env=env, logger=xclogger, extra_args=test_runner_args,
             target_app_env=target_app_env, target_app_args=target_app_args)
 
         # xcode call the following commented method, twice
