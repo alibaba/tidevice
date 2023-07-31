@@ -262,7 +262,7 @@ def cmd_xctest(args: argparse.Namespace):
         logger.info("Launch env: %s", env)
 
     test_process_args = []
-    for kv in args.args or []:
+    for kv in args.test_process_args or []:
         key, val = kv.split(":", 1)
         test_process_args.extend([f'-{key}', val])
     if test_process_args:
@@ -851,6 +851,15 @@ _commands = [
             dict(args=['-e', '--env'],
                  action='append',
                  help="set env with format key:value, support multi -e"),
+            dict(args=['--test_process_args'],
+                 action='append',
+                 help="set command line args to test process with format key:value, support multi --test_process_args"),
+            dict(args=['--target_app_env'],
+                 action='append',
+                 help="set env to target app with format key:value, support multi --target_app_env"),
+            dict(args=['--target_app_args'],
+                 action='append',
+                 help="set command line args to target app with format key:value, support multi --target_app_args"),
         ],
         help="run XCTest (XCUITest)"),
     dict(

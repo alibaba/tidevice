@@ -821,7 +821,7 @@ class BaseDevice():
             conn = self.start_service(LockdownService.InstrumentsRemoteServer)
 
         return ServiceInstruments(conn)
-         
+        
     def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
