@@ -264,11 +264,10 @@ def cmd_xctest(args: argparse.Namespace):
     test_process_args = []
     for kv in args.test_process_args or []:
         key, val = kv.split(":", 1)
-        test_process_args.extend([f'-{key}', val])
+        test_process_args.extend([key, val])
     if test_process_args:
         logger.info("Launch test process args: %s", test_process_args)
 
-    target_app_env = {}
     target_app_env = dict(
         token.split(":", 1) for token in args.target_app_env or [])
     if target_app_env:
@@ -277,7 +276,7 @@ def cmd_xctest(args: argparse.Namespace):
     target_app_args = []
     for kv in args.target_app_args or []:
         key, val = kv.split(":", 1)
-        target_app_args.extend([f'-{key}', val])
+        target_app_args.extend([key, val])
     if target_app_args:
         logger.info("Target app args: %s", target_app_args)
 
@@ -851,15 +850,15 @@ _commands = [
             dict(args=['-e', '--env'],
                  action='append',
                  help="set env with format key:value, support multi -e"),
-            dict(args=['--test_process_args'],
+            dict(args=['--test-process-args'],
                  action='append',
-                 help="set command line args to test process with format key:value, support multi --test_process_args"),
-            dict(args=['--target_app_env'],
+                 help="set command line args to test process with format key:value, support multi --test-process-args"),
+            dict(args=['--target-app-env'],
                  action='append',
-                 help="set env to target app with format key:value, support multi --target_app_env"),
-            dict(args=['--target_app_args'],
+                 help="set env to target app with format key:value, support multi --target-app-env"),
+            dict(args=['--target-app-args'],
                  action='append',
-                 help="set command line args to target app with format key:value, support multi --target_app_args"),
+                 help="set command line args to target app with format key:value, support multi --target-app-args"),
         ],
         help="run XCTest (XCUITest)"),
     dict(
