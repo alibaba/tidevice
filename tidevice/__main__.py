@@ -262,10 +262,8 @@ def cmd_xctest(args: argparse.Namespace):
         logger.info("Launch env: %s", env)
 
     test_runner_args = []
-    for kv in args.test_runner_args or []:
-        key, val = kv.split(":", 1)
-        test_runner_args.extend([key, val])
-    if test_runner_args:
+    if args.test_runner_args:
+        test_runner_args = args.test_runner_args.split(',')
         logger.info("Launch test runner args: %s", test_runner_args)
 
     target_app_env = dict(
@@ -274,10 +272,8 @@ def cmd_xctest(args: argparse.Namespace):
         logger.info("Target app env: %s", target_app_env)
 
     target_app_args = []
-    for kv in args.target_app_args or []:
-        key, val = kv.split(":", 1)
-        target_app_args.extend([key, val])
-    if target_app_args:
+    if args.target_app_args:
+        target_app_args = args.target_app_args.split(',')
         logger.info("Target app args: %s", target_app_args)
 
     d.xctest(args.bundle_id,
@@ -852,13 +848,13 @@ _commands = [
                  help="set env with format key:value, support multi -e"),
             dict(args=['--test-runner-args'],
                  action='append',
-                 help="set command line args to test runner with format key:value, support multi --test-runner-args"),
+                 help="set command line args to test runner with a comma-separated list of strings"),
             dict(args=['--target-app-env'],
                  action='append',
                  help="set env to target app with format key:value, support multi --target-app-env"),
             dict(args=['--target-app-args'],
                  action='append',
-                 help="set command line args to target app with format key:value, support multi --target-app-args"),
+                 help="set command line args to target app with a comma-separated list of strings"),
         ],
         help="run XCTest (XCUITest)"),
     dict(
