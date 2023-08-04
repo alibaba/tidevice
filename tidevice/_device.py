@@ -825,11 +825,11 @@ class BaseDevice():
     def _launch_app_runner(self,
                     bundle_id: str,
                     session_identifier: uuid.UUID,
-                    env: dict = {},
                     target_app_bundle_id: str = None,
                     logger: logging.Logger = logging,
                     quit_event: threading.Event = None,
-                    extra_args: Optional[list] = None,
+                    test_runner_env: Optional[dict] = None,
+                    test_runner_args: Optional[list] = None,
                     target_app_env: Optional[dict] = None,
                     target_app_args: Optional[list] = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
 
@@ -895,7 +895,8 @@ class BaseDevice():
             # maybe no needed
             'LLVM_PROFILE_FILE': app_container + "/tmp/%p.profraw", # %p means pid
         } # yapf: disable
-        app_env.update(env)
+        if test_runner_env:
+            app_env.update(test_runner_env)
 
         if self.major_version() >= 11:
             app_env['DYLD_INSERT_LIBRARIES'] = '/Developer/usr/lib/libMainThreadChecker.dylib'
@@ -905,7 +906,7 @@ class BaseDevice():
             '-NSTreatUnknownArgumentsAsOpen', 'NO',
             '-ApplePersistenceIgnoreState', 'YES'
         ]
-        app_args.extend(extra_args or [])
+        app_args.extend(test_runner_args or [])
         app_options = {'StartSuspendedKey': False}
         if self.major_version() >= 12:
             app_options['ActivateSuspended'] = True
@@ -984,8 +985,8 @@ class BaseDevice():
             key=lambda v: v != 'com.facebook.wda.irmarunner.xctrunner')
         return bundle_ids[0]
 
-    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None,
-               logger=None, env: dict={},
+    def xctest(self, fuzzy_bundle_id="com.*.xctrunner", target_bundle_id=None, logger=None,
+               test_runner_env: Optional[dict]=None,
                test_runner_args: Optional[list]=None,
                target_app_env: Optional[dict]=None,
                target_app_args: Optional[list]=None):
@@ -993,13 +994,14 @@ class BaseDevice():
         bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
         return self.xcuitest(bundle_id, target_bundle_id=target_bundle_id,
-                             logger=logger, env=env,
+                             logger=logger, test_runner_env=test_runner_env,
                              test_runner_args=test_runner_args,
                              target_app_env=target_app_env,
                              target_app_args=target_app_args)
 
     def xcuitest(self, bundle_id, target_bundle_id=None, logger=None,
-                 env: dict={}, test_runner_args: Optional[list]=None,
+                 test_runner_env: dict={},
+                 test_runner_args: Optional[list]=None,
                  target_app_env: Optional[dict]=None,
                  target_app_args: Optional[list]=None):
         """
@@ -1008,7 +1010,7 @@ class BaseDevice():
         Args:
             bundle_id (str): xctrunner bundle id
             target_bundle_id (str): optional, launch WDA-UITests will not need it
-            env (dict[str, str]): optional, the environment variables to be passed to the test runner 
+            test_runner_env (dict[str, str]): optional, the environment variables to be passed to the test runner 
             test_runner_args (list[str]): optional, the command line arguments to be passed to the test runner
             target_app_env (dict[str, str]): optional, the environmen variables to be passed to the target app
             target_app_args (list[str]): optional, the command line arguments to be passed to the target app
@@ -1092,7 +1094,8 @@ class BaseDevice():
         _, pid = self._launch_app_runner(
             bundle_id, session_identifier,
             target_app_bundle_id=target_bundle_id,
-            env=env, logger=xclogger, extra_args=test_runner_args,
+            logger=xclogger,
+            test_runner_env=test_runner_env, test_runner_args=test_runner_args,
             target_app_env=target_app_env, target_app_args=target_app_args)
 
         # xcode call the following commented method, twice
