@@ -831,7 +831,8 @@ class BaseDevice():
                     test_runner_env: Optional[dict] = None,
                     test_runner_args: Optional[list] = None,
                     target_app_env: Optional[dict] = None,
-                    target_app_args: Optional[list] = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
+                    target_app_args: Optional[list] = None,
+                    tests_to_run: Optional[set] = None) -> typing.Tuple[ServiceInstruments, int]:  # pid
 
         logger = logging.getLogger(LOG.xctest)
 
@@ -854,6 +855,7 @@ class BaseDevice():
             "targetApplicationBundleID": target_app_bundle_id,
             "targetApplicationArguments": target_app_args or [],
             "targetApplicationEnvironment": target_app_env or {},
+            "testsToRun": tests_to_run or set(),  # We can use "set()" or "None" as default value, but "{}" won't work because the decoding process regards "{}" as a dictionary.
         }))  # yapf: disable
 
         fsync = self.app_sync(bundle_id, command="VendContainer")
@@ -989,7 +991,8 @@ class BaseDevice():
                test_runner_env: Optional[dict]=None,
                test_runner_args: Optional[list]=None,
                target_app_env: Optional[dict]=None,
-               target_app_args: Optional[list]=None):
+               target_app_args: Optional[list]=None,
+               tests_to_run: Optional[set]=None):
         """ Alias of xcuitest """
         bundle_id = self._fnmatch_find_bundle_id(fuzzy_bundle_id)
         logger.info("BundleID: %s", bundle_id)
@@ -997,13 +1000,15 @@ class BaseDevice():
                              logger=logger, test_runner_env=test_runner_env,
                              test_runner_args=test_runner_args,
                              target_app_env=target_app_env,
-                             target_app_args=target_app_args)
+                             target_app_args=target_app_args,
+                             tests_to_run=tests_to_run)
 
     def xcuitest(self, bundle_id, target_bundle_id=None, logger=None,
                  test_runner_env: dict={},
                  test_runner_args: Optional[list]=None,
                  target_app_env: Optional[dict]=None,
-                 target_app_args: Optional[list]=None):
+                 target_app_args: Optional[list]=None,
+                 tests_to_run: Optional[set]=None):
         """
         Launch xctrunner and wait until quit
 
@@ -1014,6 +1019,7 @@ class BaseDevice():
             test_runner_args (list[str]): optional, the command line arguments to be passed to the test runner
             target_app_env (dict[str, str]): optional, the environmen variables to be passed to the target app
             target_app_args (list[str]): optional, the command line arguments to be passed to the target app
+            tests_to_run (set[str]): optional, the specific test classes or test methods to run
         """
         if not logger:
             logger = setup_logger(level=logging.INFO)
@@ -1096,7 +1102,8 @@ class BaseDevice():
             target_app_bundle_id=target_bundle_id,
             logger=xclogger,
             test_runner_env=test_runner_env, test_runner_args=test_runner_args,
-            target_app_env=target_app_env, target_app_args=target_app_args)
+            target_app_env=target_app_env, target_app_args=target_app_args,
+            tests_to_run=tests_to_run)
 
         # xcode call the following commented method, twice
         # but it seems can be ignored

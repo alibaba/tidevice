@@ -276,13 +276,19 @@ def cmd_xctest(args: argparse.Namespace):
         target_app_args = args.target_app_args.split(',')
         logger.info("Target app args: %s", target_app_args)
 
+    tests_to_run = set()
+    if args.tests_to_run:
+        tests_to_run = set(args.tests_to_run.strip().split(','))
+        logger.info("Target app args: %s", target_app_args)
+
     d.xctest(args.bundle_id,
              target_bundle_id=args.target_bundle_id,
              logger=setup_logger(level=logging.INFO),
              test_runner_env=env,
              test_runner_args=test_runner_args,
              target_app_env=target_app_env,
-             target_app_args=target_app_args)
+             target_app_args=target_app_args,
+             tests_to_run=tests_to_run)
 
 
 def cmd_screenshot(args: argparse.Namespace):
@@ -853,6 +859,8 @@ _commands = [
                  help="set env to target app with format key:value, support multi --target-app-env"),
             dict(args=['--target-app-args'],
                  help="set command line args to target app with a comma-separated list of strings"),
+            dict(args=['--tests-to-run'],
+                 help="specify a set of test classes or test methods to run, format: a comma-separated list of Test-Class-Name[/Test-Method-Name]"),
         ],
         help="run XCTest (XCUITest)"),
     dict(
