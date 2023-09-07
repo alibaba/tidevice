@@ -40,7 +40,7 @@ from ._ipautil import IPAReader
 from ._proto import *
 from ._safe_socket import *
 from ._sync import Sync
-from ._types import DeviceInfo
+from ._types import DeviceInfo, XCTestResult
 from ._usbmux import Usbmux
 from ._utils import (ProgressReader, get_app_dir, semver_compare,
                      set_socket_timeout)
@@ -1078,10 +1078,30 @@ class BaseDevice():
                 logger.info("Test runner ready detected")
                 _start_executing()
 
+        test_results = []
+        test_results_lock = threading.Lock()
+
+        def _record_test_result_callback(m: DTXMessage):
+            result = None
+            if isinstance(m.result, (tuple, list)) and len(m.result) >= 1:
+              if isinstance(m.result[1], (tuple, list)):
+                  try:
+                    result = XCTestResult(*m.result[1])
+                  except TypeError:
+                    pass
+            if not result:
+                logger.warning('Ignore unknown test result message: %s', m)
+                return
+            with test_results_lock:
+                test_results.append(result)
+
         x2.register_callback(
             '_XCT_testBundleReadyWithProtocolVersion:minimumVersion:',
             _start_executing)  # This only happends <= iOS 13
         x2.register_callback('_XCT_logDebugMessage:', _show_log_message)
+        x2.register_callback(
+            "_XCT_testSuite:didFinishAt:runCount:withFailures:unexpected:testDuration:totalDuration:",
+            _record_test_result_callback)
 
         # index: 469
         identifier = '_IDE_initiateSessionWithIdentifier:forClient:atPath:protocolVersion:'
@@ -1151,7 +1171,15 @@ class BaseDevice():
         # on windows threading.Event.wait can't handle ctrl-c
         while not quit_event.wait(.1):
             pass
-        logger.info("xctrunner quited")
+
+        test_result_str = "\n".join(map(str, test_results))
+        if any(result.failure_count > 0 for result in test_results):
+              raise RuntimeError(
+                  "Xcode test failed on device with test results:\n"
+                  f"{test_result_str}"
+              )
+
+        logger.info("xctrunner quited with result:\n%s", test_result_str)
 
 
 Device = BaseDevice

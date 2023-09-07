@@ -49,3 +49,40 @@ class DeviceInfo(_BaseInfo):
     udid: str = alias_field("SerialNumber")
     device_id: int = alias_field("DeviceID")
     conn_type: ConnectionType = alias_field("ConnectionType")
+
+
+@dataclass(frozen=True)
+class XCTestResult(_BaseInfo):
+    """Representing the XCTest result printed at the end of test.
+
+    At the end of an XCTest, the test process will print following information:
+
+        Test Suite 'MoblySignInTests' passed at 2023-09-03 16:35:39.214.
+                Executed 1 test, with 0 failures (0 unexpected) in 3.850 (3.864) seconds
+        Test Suite 'MoblySignInTests.xctest' passed at 2023-09-03 16:35:39.216.
+                 Executed 1 test, with 0 failures (0 unexpected) in 3.850 (3.866) seconds
+        Test Suite 'Selected tests' passed at 2023-09-03 16:35:39.217.
+                 Executed 1 test, with 0 failures (0 unexpected) in 3.850 (3.869) seconds
+    """
+
+    MESSAGE = (
+        "Test Suite '{test_suite_name}' passed at {end_time}.\n"
+        "\t Executed {run_count} test, with {failure_count} failures ({unexpected_count} unexpected) in {test_duration:.3f} ({total_duration:.3f}) seconds"
+    )
+
+    test_suite_name: str = alias_field('TestSuiteName')
+    end_time: str = alias_field('EndTime')
+    run_count: int = alias_field('RunCount')
+    failure_count: int = alias_field('FailureCount')
+    unexpected_count: int = alias_field('UnexpectedCount')
+    test_duration: float = alias_field('TestDuration')
+    total_duration: float = alias_field('TotalDuration')
+
+    def __repr__(self) -> str:
+        return self.MESSAGE.format(
+            test_suite_name=self.test_suite_name, end_time=self.end_time,
+            run_count=self.run_count, failure_count=self.failure_count,
+            unexpected_count=self.unexpected_count,
+            test_duration=self.test_duration,
+            total_duration=self.total_duration,
+        )
