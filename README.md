@@ -180,7 +180,7 @@ Ref issue [#46](https://github.com/alibaba/taobao-iphone-device/issues/46)
 执行方法
 
 ```bash
-$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+$ tidevice xcuitest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
 # ... 省略一部分不重要的信息 ...
 [I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
 [I 210301 15:37:07 _device:984] Test runner ready detected

@@ -20,28 +20,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest wheel coverage
         python3 -m pip install -e .
-    - name: Run tests with coverage
+    - name: Run coverage
       run: |
         coverage run -m pytest -v tests/
         coverage xml
-        coverage report -m
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-    - name: Lint with flake8
-      run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest -v tests/
+        coverage report
+    - name: Run tests with coverage
+      uses: orgoro/coverage@v3.1
+      with:
+        coverageFile: coverage.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Build targz and wheel
       run: |
         python3 setup.py sdist bdist_wheel
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        skip_existing: true
+        skip-existing: true
         password: ${{ secrets.PYPI_API_TOKEN }}

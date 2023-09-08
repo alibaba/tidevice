@@ -151,7 +151,7 @@ Demo <https://github.com/FeiHuang93/XCTest-Demo>
 - `philhuang.testXCTest` is the app to test
  
  ```bash
-$ tidevice xctest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
+$ tidevice xcuitest --bundle-id philhuang.testXCTestUITests.xctrunner --target-bundle-id philhuang.testXCTest
 # ... ignore some not important part ...
 [I 210301 15:37:07 _device:887] logProcess: 2021-03-01 15:37:07.924620+0800 testXCTestUITests-Runner[81644:13765443] Running tests...
 [I 210301 15:37:07 _device:984] Test runner ready detected
