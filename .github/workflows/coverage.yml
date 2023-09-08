@@ -1,0 +1,32 @@
+name: "coverage"
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 5
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install pypa/build
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest wheel coverage
+        python3 -m pip install -e .
+    - name: Run coverage
+      run: |
+        coverage run -m pytest -v tests/
+        coverage xml
+        coverage report
+    - name: Run tests with coverage
+      uses: orgoro/coverage@v3.1
+      with:
+        coverageFile: coverage.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
