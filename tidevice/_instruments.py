@@ -17,6 +17,7 @@ import enum
 import io
 import logging
 import queue
+import re
 import struct
 import threading
 import typing
@@ -715,7 +716,8 @@ class ServiceInstruments(DTXService):
         args = [app_path, bundle_id, app_env, args, options]
         pid = self.call_message(code, method, args)
         if not isinstance(pid, int):
-            raise ServiceError("app launch failed", pid)
+            error_message = re.sub(r"\'\s*\'", "", str(pid), flags=re.M)
+            raise ServiceError("app launch failed", error_message)
         return pid
 
     def app_kill(self, pid: int):
