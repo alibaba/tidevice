@@ -632,8 +632,9 @@ class BaseDevice():
                 logger.info("Use DeveloperImage version: %s", version)
                 return image_path
             except (DownloadError, DeveloperImageError):
+                if guess_minor == 0:
+                    raise
                 logger.debug("DeveloperImage not found: %s", version)
-        raise DeveloperImageError("DeveloperImage not found")            
 
     def _test_if_developer_mounted(self) -> bool:
         try:

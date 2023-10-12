@@ -40,7 +40,7 @@ def _urlretrieve(url, local_filename):
             os.remove(tmp_local_filename)
             
 
-def get_developer_image_url_list(version: str) -> typing.List[str]:
+def _get_developer_image_url_list(version: str) -> typing.List[str]:
     """ return url list which may contains mirror url """
     # https://github.com/JinjunHan/iOSDeviceSupport
     # alternative repo: https://github.com/iGhibli/iOS-DeviceSupport
@@ -58,14 +58,15 @@ def cache_developer_image(version: str) -> str:
     """
     _alias = {
         "12.5": "12.4",
+        # "16.5": "17.0",
     }
-
-    # Default download image from https://github.com/JinjunHan/iOSDeviceSupport
-    image_urls = get_developer_image_url_list(version)
 
     if version in _alias:
         version = _alias[version]
         logger.info("Use alternative developer image %s", version)
+
+    # Default download image from https://github.com/JinjunHan/iOSDeviceSupport
+    image_urls = _get_developer_image_url_list(version)
 
     # $HOME/.tidevice/device-support/12.2.zip
     local_device_support = get_app_dir("device-support")
@@ -95,6 +96,9 @@ def get_developer_image_path(version: str) -> str:
         - DeveloperImageError
         - DownloadError
     """
+    if version.startswith("17."):
+        raise DeveloperImageError("iOS 17.x is not supported yet")
+    
     image_zip_path = cache_developer_image(version)
     image_path = get_app_dir("device-support/"+version)
     if os.path.isfile(os.path.join(image_path, "DeveloperDiskImage.dmg")):
