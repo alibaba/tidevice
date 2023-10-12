@@ -32,7 +32,7 @@ from retry import retry
 
 from . import bplist, plistlib2
 from ._crash import CrashManager
-from ._imagemounter import ImageMounter, cache_developer_image
+from ._imagemounter import ImageMounter, get_developer_image_path
 from ._installation import Installation
 from ._instruments import (AUXMessageBuffer, DTXMessage, DTXService, Event,
                            ServiceInstruments)
@@ -611,7 +611,6 @@ class BaseDevice():
         conn = self._unsafe_start_service(ImageMounter.SERVICE_NAME)
         return ImageMounter(conn)
 
-    @contextlib.contextmanager
     def _request_developer_image_dir(self):
         # use local path first
         # use download cache resource second
@@ -625,31 +624,16 @@ class BaseDevice():
         image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
         signature_path = image_path + ".signature"
         if os.path.isfile(image_path) and os.path.isfile(signature_path):
-            yield mac_developer_dir
-        else:
-            image_zip_path = cache_developer_image(version)
-            with tempfile.TemporaryDirectory() as tmpdir:
-                zf = zipfile.ZipFile(image_zip_path)
-                zf.extractall(tmpdir)
-                rootfiles = os.listdir(tmpdir)
-
-                rootdirs = []
-                for fname in rootfiles:
-                    if fname.startswith("_") or fname.startswith("."):
-                        continue
-                    if os.path.isdir(os.path.join(tmpdir, fname)):
-                        rootdirs.append(fname)
-
-                if len(rootfiles) == 0: # empty zip
-                    raise RuntimeError("deviceSupport zip file is empty")
-                elif os.path.isfile(os.path.join(tmpdir, "DeveloperDiskImage.dmg")):
-                    yield tmpdir
-                elif version in rootdirs: # contains directory: {version}
-                    yield os.path.join(tmpdir, version)
-                elif len(rootdirs) == 1: # only contain one directory
-                    yield os.path.join(tmpdir, rootdirs[0])
-                else:
-                    raise RuntimeError("deviceSupport for {} not detected DeveloperDiskImage".format(version))
+            return mac_developer_dir
+        for guess_minor in range(int(minor), -1, -1):
+            version = major + "." + str(guess_minor)
+            try:
+                image_path = get_developer_image_path(version)
+                logger.info("Use DeveloperImage version: %s", version)
+                return image_path
+            except (DownloadError, DeveloperImageError):
+                logger.debug("DeveloperImage not found: %s", version)
+        raise DeveloperImageError("DeveloperImage not found")            
 
     def _test_if_developer_mounted(self) -> bool:
         try:
@@ -677,11 +661,11 @@ class BaseDevice():
             logger.info("DeviceLocked, but DeveloperImage already mounted")
             return
 
-        with self._request_developer_image_dir() as _dir: #, signature_path:
-            image_path = os.path.join(_dir, "DeveloperDiskImage.dmg")
-            signature_path = image_path + ".signature"
-            self.imagemounter.mount(image_path, signature_path)
-            logger.info("DeveloperImage mounted successfully")
+        developer_img_dir = self._request_developer_image_dir()
+        image_path = os.path.join(developer_img_dir, "DeveloperDiskImage.dmg")
+        signature_path = image_path + ".signature"
+        self.imagemounter.mount(image_path, signature_path)
+        logger.info("DeveloperImage mounted successfully")
 
     @property
     def sync(self) -> Sync:

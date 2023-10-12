@@ -4,7 +4,7 @@
 
 __all__ = [
     'BaseError', 'MuxError', 'MuxReplyError', 'MuxVersionError', 'MuxServiceError', 'ServiceError',
-    'SocketError',
+    'SocketError', 'DownloadError', 'DeveloperImageError',
     'IPAError'
 ]
 
@@ -44,3 +44,10 @@ class SocketError(MuxError):
 
 class IPAError(BaseError):
     """ IPA error """
+
+
+class DownloadError(BaseError):
+    """ Download error """
+
+class DeveloperImageError(BaseError):
+    """ Developer image error """

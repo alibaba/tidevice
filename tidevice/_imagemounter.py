@@ -3,6 +3,7 @@
 
 import os
 import shutil
+import tempfile
 import time
 import typing
 import zipfile
@@ -13,7 +14,7 @@ import requests
 
 from ._safe_socket import PlistSocketProxy
 from ._utils import get_app_dir, logger
-from .exceptions import MuxError, MuxServiceError
+from .exceptions import DeveloperImageError, MuxError, MuxServiceError, DownloadError
 
 _REQUESTS_TIMEOUT = 30.0
 
@@ -27,7 +28,8 @@ def _urlretrieve(url, local_filename):
         tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
         headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
         with requests.get(url, headers=headers, stream=True, timeout=_REQUESTS_TIMEOUT) as r:
-            r.raise_for_status()
+            if r.status_code != 200:
+                raise DownloadError(f"Download {url} failed: {r.status_code}")
             with open(tmp_local_filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f, length=16<<20)
                 f.flush()
@@ -41,6 +43,7 @@ def _urlretrieve(url, local_filename):
 def get_developer_image_url_list(version: str) -> typing.List[str]:
     """ return url list which may contains mirror url """
     # https://github.com/JinjunHan/iOSDeviceSupport
+    # alternative repo: https://github.com/iGhibli/iOS-DeviceSupport
     github_repo = "JinjunHan/iOSDeviceSupport"
 
     zip_name = f"{version}.zip"
@@ -55,19 +58,10 @@ def cache_developer_image(version: str) -> str:
     """
     _alias = {
         "12.5": "12.4",
-        "16.6": "16.5",
-    }
-    # https://github.com/alibaba/taobao-iphone-device/issues/258#issuecomment-1328728799
-    # download image from https://github.com/iGhibli/iOS-DeviceSupport
-    # 换了16.1好像也没什么卵用
-    version_url_map = {
-        "15.7": "https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/15.7(FromXcode_14.1_Release_Candidate_xip).zip",
     }
 
     # Default download image from https://github.com/JinjunHan/iOSDeviceSupport
     image_urls = get_developer_image_url_list(version)
-    if version in version_url_map:
-        image_urls = [version_url_map[version]]
 
     if version in _alias:
         version = _alias[version]
@@ -94,6 +88,44 @@ def cache_developer_image(version: str) -> str:
         if err:
             raise err
     return image_zip_path
+
+def get_developer_image_path(version: str) -> str:
+    """ return developer image path 
+    Raises:
+        - DeveloperImageError
+        - DownloadError
+    """
+    image_zip_path = cache_developer_image(version)
+    image_path = get_app_dir("device-support/"+version)
+    if os.path.isfile(os.path.join(image_path, "DeveloperDiskImage.dmg")):
+        return image_path
+
+    # 解压下载的zip文件
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zf = zipfile.ZipFile(image_zip_path)
+        zf.extractall(tmpdir)
+        rootfiles = os.listdir(tmpdir)
+
+        rootdirs = []
+        for fname in rootfiles:
+            if fname.startswith("_") or fname.startswith("."):
+                continue
+            if os.path.isdir(os.path.join(tmpdir, fname)):
+                rootdirs.append(fname)
+
+        dmg_path = tmpdir
+        if len(rootfiles) == 0: # empty zip
+            raise DeveloperImageError("deviceSupport zip file is empty")
+        elif version in rootdirs: # contains directory: {version}
+            dmg_path = os.path.join(tmpdir, version)
+        elif len(rootdirs) == 1: # only contain one directory
+            dmg_path = os.path.join(tmpdir, rootdirs[0])
+        
+        if not os.path.isfile(os.path.join(dmg_path, "DeveloperDiskImage.dmg")):
+            raise DeveloperImageError("deviceSupport zip file is invalid")
+        
+        shutil.copytree(dmg_path, image_path, dirs_exist_ok=True)
+    return image_path
 
 
 class ImageMounter(PlistSocketProxy):
