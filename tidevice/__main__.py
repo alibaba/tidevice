@@ -468,7 +468,7 @@ def cmd_developer(args: argparse.Namespace):
         print(d.imagemounter.lookup())
     else:
         d = _udid2device(args.udid)
-        d.mount_developer_image()
+        d.mount_developer_image(reboot_ok=args.reboot_ok)
     return
 
 
@@ -928,7 +928,10 @@ _commands = [
                   help="list mount information"),
              dict(args=['--download-all'],
                   action="store_true",
-                  help="download all developer to local")
+                  help="download all developer to local"),
+             dict(args=["-r", "--reboot-ok"],
+                  action="store_true",
+                  help="auto reboot device to enable developer mode"),
          ],
          help="mount developer image to device"),
     dict(action=cmd_pair, command='pair', help='pair device'),

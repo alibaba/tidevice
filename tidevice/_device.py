@@ -659,13 +659,13 @@ class BaseDevice():
         except MuxServiceError:
             return False
 
-    def mount_developer_image(self):
+    def mount_developer_image(self, reboot_ok: bool = False):
         """
         Raises:
             MuxError, ServiceError
         """
         if semver_compare(self.product_version, "16.0.0") >= 0:
-            self.enable_ios16_developer_mode()
+            self.enable_ios16_developer_mode(reboot_ok=reboot_ok)
         try:
             if self.imagemounter.is_developer_mounted():
                 logger.info("DeveloperImage already mounted")
