@@ -15,8 +15,9 @@ import typing
 
 
 class LOG(str, enum.Enum):
-    main = "tidevice"
-    xctest = "tidevice.xctest"
+    root = "tidevice"
+    xcuitest = "tidevice.xctest"
+    socket = "tidevice.socket"
 
 
 class Color(enum.Enum):

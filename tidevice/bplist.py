@@ -394,6 +394,16 @@ class NSException(NSBaseObject):
         return NSException(name, reason, userinfo)
 
 
+# XCTTestIdentifier
+    # ns_info: {'c': UID(2), 'o': 1, '$class': UID(5)}
+    # objects: ['$null', 
+    #     {'c': UID(2), 'o': 1, '$class': UID(5)},
+    #     {'NS.objects': [UID(3)], '$class': UID(4)},
+    #     'All tests', 
+    #     {'$classname': 'NSArray', '$classes': ['NSArray', 'NSObject']}, 
+    #     {'$classname': 'XCTTestIdentifier', '$classes': ['XCTTestIdentifier', 'NSObject']}
+    # ]
+    
 # XCActivityRecord
 # ns_info: {'$class': UID(10),
 #  'activityType': UID(7),
@@ -461,6 +471,8 @@ _DECODE_MAP = {
     "DTTapStatusMessage": NSIgnore,
     "XCTAttachment": NSIgnore,
     "XCTCapabilities": NSIgnore,
+    "XCTTestIdentifier": NSIgnore,
+    "XCTestCaseRunConfiguration": NSIgnore,
 }
 
 

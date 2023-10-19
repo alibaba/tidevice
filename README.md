@@ -115,7 +115,7 @@ $ tidevice ps --json output as json
 
 ```bash
 # 运行XCTEST
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
+$ tidevice xcuitest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:23 _device:909] BundleID: com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:23 _device:911] DeviceIdentifier: 12345678901234567890abcdefg
 [I 210127 11:40:23 _device:773] SignIdentity: 'Apple Development: -Your-Developer-Name-'
@@ -125,7 +125,7 @@ $ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner
 [I 210127 11:40:24 _device:875] WebDriverAgent start successfully
 
 # 修改监听端口为8200, 并显示调试日志
-$ tidevice xctest -B com.facebook.wda.WebDriverAgent.Runner -e USE_PORT:8200 --debug
+$ tidevice xcuitest -B com.facebook.wda.WebDriverAgent.Runner -e USE_PORT:8200 --debug
 ```
 
 ### Relay

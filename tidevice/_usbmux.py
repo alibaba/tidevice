@@ -18,7 +18,7 @@ from ._safe_socket import PlistSocket, PlistSocketProxy
 from .exceptions import * # pragma warning disables S2208
 
 
-logger = logging.getLogger(LOG.main)
+logger = logging.getLogger(LOG.socket)
 
 class Usbmux:
     def __init__(self, address: Optional[Union[str, tuple]] = None):

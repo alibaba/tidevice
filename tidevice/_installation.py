@@ -20,12 +20,10 @@
 
 import logging
 from typing import Optional
-
-from ._proto import LOG
 from ._safe_socket import PlistSocketProxy
 from .exceptions import ServiceError
 
-logger = logging.getLogger(LOG.main)
+logger = logging.getLogger(__name__)
 
 
 class Installation(PlistSocketProxy):

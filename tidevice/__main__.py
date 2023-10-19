@@ -17,12 +17,11 @@ import typing
 from collections import defaultdict
 from datetime import datetime
 from pprint import pformat, pprint
-from typing import Optional, Union
+from typing import Optional
 
 import requests
 from logzero import setup_logger
 from tabulate import tabulate
-from loguru import logger as ulogger
 
 from ._device import Device
 from ._imagemounter import cache_developer_image
@@ -31,13 +30,13 @@ from ._perf import DataType
 from ._proto import LOG, MODELS, PROGRAM_NAME, ConnectionType
 from ._relay import relay
 from ._usbmux import Usbmux
-from ._utils import get_app_dir, get_binary_by_name, is_atty
+from ._utils import is_atty
 from ._version import __version__
 from ._wdaproxy import WDAService
 from .exceptions import MuxError, MuxServiceError, ServiceError
 
 um: Usbmux = None  # Usbmux
-logger = logging.getLogger(PROGRAM_NAME)
+logger = logging.getLogger(__name__)
 
 
 def _complete_udid(udid: Optional[str] = None) -> str:
@@ -245,13 +244,12 @@ def cmd_wait_for_device(args):
             break
 
 
-def cmd_xctest(args: argparse.Namespace):
+def cmd_xcuitest(args: argparse.Namespace):
     """
     Run XCTest required WDA installed.
     """
     if args.debug:
-        ulogger.enable(PROGRAM_NAME)
-        setup_logger(LOG.xctest, level=logging.DEBUG)
+        setup_logger(LOG.xcuitest, level=logging.DEBUG)
 
     d = _udid2device(args.udid)
     env = {}
@@ -281,9 +279,8 @@ def cmd_xctest(args: argparse.Namespace):
         tests_to_run = set(args.tests_to_run.strip().split(','))
         logger.info("Target app args: %s", target_app_args)
 
-    d.xctest(args.bundle_id,
+    d.runwda(args.bundle_id,
              target_bundle_id=args.target_bundle_id,
-             logger=setup_logger(level=logging.INFO),
              test_runner_env=env,
              test_runner_args=test_runner_args,
              target_app_env=target_app_env,
@@ -836,9 +833,9 @@ _commands = [
          ],
          help="relay phone inner port to pc, same as iproxy"),
     dict(
-        action=cmd_xctest,
-        command="xctest",
-        aliases=['xcuitest'],
+        action=cmd_xcuitest,
+        command="xcuitest",
+        aliases=['xctest'],
         flags=[
             dict(args=['--debug'], action='store_true', help='show debug log'),
             dict(args=['-B', '--bundle_id', '--bundle-id'],
@@ -1003,12 +1000,10 @@ def main():
         # show_upgrade_message()
         return
 
-    if args.trace:
-        ulogger.enable(PROGRAM_NAME)
-        
-    # log setup
-    setup_logger(LOG.main,
-        level=logging.DEBUG if os.getenv("DEBUG") in ("1", "on", "true") else logging.INFO)
+    if args.trace or os.getenv("TIDEVICE_DEBUG") in ("1", "on", "true"):
+        setup_logger(LOG.root, level=logging.DEBUG)
+    else:
+        setup_logger(LOG.root, level=logging.INFO)
 
     global um
     um = Usbmux(args.socket)

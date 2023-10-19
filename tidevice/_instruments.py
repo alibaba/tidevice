@@ -35,7 +35,7 @@ from ._proto import LOG, InstrumentsService
 from ._safe_socket import PlistSocketProxy
 from .exceptions import MuxError, ServiceError
 
-logger = logging.getLogger(LOG.xctest)
+logger = logging.getLogger(LOG.xcuitest)
 
 DTXMessageHeader = ct.Struct("DTXMessageHeader",
     ct.UInt32("magic", 0x1F3D5B79),
@@ -113,6 +113,9 @@ class DTXPayload:
                 return flags, (retobj, args)
             except bplist.InvalidFileException as e:
                 return flags, (None, None)
+            except bplist.DecodeNotSupportedError as e:
+                logger.warning("bplist decode not supported: %s", e)
+                return flags, (None, None)
 
         elif flags in (0x01, 0x03, 0x04):
             assert h.total_length + 0x10 == len(payload)
@@ -164,9 +167,10 @@ class DTXPayload:
             flags (uint32):
                 - 0x00: null
                 - 0x02: function call, include method and arguments
-                - 0x03: object
-                - 0x04: object
+                - 0x03: object  response with return value
+                - 0x04: object  type error
                 - 0x05: null
+                - 0x0707: lz4 compressed data
             body_or_identifier, args: only used in flags(0x02)
         
         Returns:

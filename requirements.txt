@@ -19,7 +19,6 @@ retry
 simplejson
 tabulate
 logzero
-loguru
 deprecation
 
 # hotfix for HTTPConnectino.request() get an unexpected keyword argument 'chunked'

@@ -15,11 +15,11 @@ import typing
 import weakref
 from typing import Any, Union
 
-from ._proto import PROGRAM_NAME, UsbmuxMessageType
+from ._proto import UsbmuxMessageType, LOG
 from ._utils import set_socket_timeout
 from .exceptions import *
 
-from loguru import logger
+logger = logging.getLogger(LOG.socket)
 
 
 _n = [0]
@@ -32,7 +32,7 @@ def acquire_uid() -> int:
         _n[0] += 1
         _id_numbers.append(_n[0])
         _id = _n[0]
-    logger.info("Opening socket: id={}", _id)
+    logger.debug("Opening socket: id=%d", _id)
     return _id
 
 
@@ -41,7 +41,7 @@ def release_uid(id: int):
         _id_numbers.remove(id)
     except ValueError:
         pass
-    logger.info("Closing socket, id={}", id)
+    logger.debug("Closing socket, id=%d", id)
     
 
 
@@ -86,7 +86,7 @@ class SafeStreamSocket:
                 self._sock.shutdown(socket.SHUT_RDWR)
             self._sock.close()
         except OSError as e:
-            logger.warning("Socket({}): close error: {}", self.id, e)
+            logger.warning("Socket(%d): close error: %s", self.id, e)
 
     def close(self):
         self._finalizer()
@@ -150,7 +150,7 @@ class SafeStreamSocket:
 
     def switch_to_ssl(self, pemfile):
         """ wrap socket to SSLSocket """
-        logger.debug("Socket({}): switch to ssl", self.id)
+        logger.debug("Socket(%d): switch to ssl", self.id)
         assert os.path.isfile(pemfile)
         
         # https://docs.python.org/zh-cn/3/library/ssl.html#ssl.SSLContext
@@ -201,7 +201,7 @@ class PlistSocket(SafeStreamSocket):
             message_type: 8 (Plist)
             tag: int
         """
-        logger.debug("SEND({}): {}", self.id, payload)
+        logger.debug("SEND(%d): %s", self.id, payload)
 
         body_data = plistlib.dumps(payload)
         if self._first:  # first package
@@ -228,7 +228,7 @@ class PlistSocket(SafeStreamSocket):
         if 'PairRecordData' in payload:
             logger.debug("Recv pair record data ...")
         else:
-            logger.debug("RECV({}): {}", self.id, payload)
+            logger.debug("RECV(%d): %s", self.id, payload)
         return payload
 
 
