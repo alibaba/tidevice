@@ -127,8 +127,9 @@ def get_developer_image_path(version: str) -> str:
         
         if not os.path.isfile(os.path.join(dmg_path, "DeveloperDiskImage.dmg")):
             raise DeveloperImageError("deviceSupport zip file is invalid")
-        
-        shutil.copytree(dmg_path, image_path, dirs_exist_ok=True)
+
+        os.makedirs(image_path, exist_ok=True)
+        shutil.copytree(dmg_path, image_path)
     return image_path
 
 
