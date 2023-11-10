@@ -25,8 +25,8 @@ jobs:
         coverage run -m pytest -v tests/
         coverage xml
         coverage report
-    - name: Run tests with coverage
-      uses: orgoro/coverage@v3.1
-      with:
-        coverageFile: coverage.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
+    #- name: Run tests with coverage
+    #  uses: orgoro/coverage@v3.1
+    #  with:
+    #    coverageFile: coverage.xml
+    #    token: ${{ secrets.GITHUB_TOKEN }}
