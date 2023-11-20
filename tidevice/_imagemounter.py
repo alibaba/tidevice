@@ -19,7 +19,7 @@ from .exceptions import DeveloperImageError, MuxError, MuxServiceError, Download
 _REQUESTS_TIMEOUT = 30.0
 
 
-@retry.retry(exceptions=requests.ReadTimeout, tries=5, delay=.5)
+@retry.retry(exceptions=requests.ReadTimeout, tries=3, delay=.5)
 def _urlretrieve(url, local_filename):
     """ download url to local """
     logger.info("Download %s -> %s", url, local_filename)
@@ -28,8 +28,10 @@ def _urlretrieve(url, local_filename):
         tmp_local_filename = local_filename + f".download-{int(time.time()*1000)}"
         headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
         with requests.get(url, headers=headers, stream=True, timeout=_REQUESTS_TIMEOUT) as r:
-            if r.status_code != 200:
-                raise DownloadError(f"Download {url} failed: {r.status_code}")
+            try:
+                r.raise_for_status()
+            except requests.HTTPError as e:
+                raise DownloadError(f"Download {url} failed: {r.status_code}", e)
             with open(tmp_local_filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f, length=16<<20)
                 f.flush()
@@ -58,9 +60,9 @@ def cache_developer_image(version: str) -> str:
     """
     _alias = {
         "12.5": "12.4",
+        "15.8": "15.5",
         # "16.5": "17.0",
     }
-
     if version in _alias:
         version = _alias[version]
         logger.info("Use alternative developer image %s", version)
@@ -98,7 +100,6 @@ def get_developer_image_path(version: str) -> str:
     """
     if version.startswith("17."):
         raise DeveloperImageError("iOS 17.x is not supported yet")
-    
     image_zip_path = cache_developer_image(version)
     image_path = get_app_dir("device-support/"+version)
     if os.path.isfile(os.path.join(image_path, "DeveloperDiskImage.dmg")):
@@ -129,7 +130,8 @@ def get_developer_image_path(version: str) -> str:
             raise DeveloperImageError("deviceSupport zip file is invalid")
 
         os.makedirs(image_path, exist_ok=True)
-        shutil.copytree(dmg_path, image_path)
+        for filename in ("DeveloperDiskImage.dmg", "DeveloperDiskImage.dmg.signature"):
+            shutil.copyfile(os.path.join(dmg_path, filename), os.path.join(image_path, filename))
     return image_path
 
 

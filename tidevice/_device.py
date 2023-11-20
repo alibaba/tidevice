@@ -9,6 +9,7 @@ import io
 import logging
 import os
 import pathlib
+import platform
 import re
 import shutil
 import struct
@@ -496,7 +497,7 @@ class BaseDevice():
     def start_service(self, name: str) -> PlistSocketProxy:
         try:
             return self._unsafe_start_service(name)
-        except MuxServiceError:
+        except (MuxServiceError, MuxError):
             self.mount_developer_image()
             # maybe should wait here
             time.sleep(.5)
@@ -607,30 +608,23 @@ class BaseDevice():
         conn = self._unsafe_start_service(ImageMounter.SERVICE_NAME)
         return ImageMounter(conn)
 
-    def _request_developer_image_dir(self):
-        # use local path first
-        # use download cache resource second
-        # download from network third
-        product_version = self.get_value("ProductVersion")
-        logger.info("ProductVersion: %s", product_version)
-        major, minor = product_version.split(".")[:2]
-        version = major + "." + minor
-
-        mac_developer_dir = f"/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/{version}"
-        image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
-        signature_path = image_path + ".signature"
-        if os.path.isfile(image_path) and os.path.isfile(signature_path):
-            return mac_developer_dir
-        for guess_minor in range(int(minor), -1, -1):
-            version = major + "." + str(guess_minor)
-            try:
-                image_path = get_developer_image_path(version)
-                logger.info("Use DeveloperImage version: %s", version)
-                return image_path
-            except (DownloadError, DeveloperImageError):
-                if guess_minor == 0:
-                    raise
-                logger.debug("DeveloperImage not found: %s", version)
+    def _request_developer_image_dir(self, major: int, minor: int) -> typing.Optional[str]:
+        # 1. use local path
+        # 2. use download cache resource
+        # 3. download from network
+        version = str(major) + "." + str(minor)
+        if platform.system() == "Darwin":
+            mac_developer_dir = f"/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/{version}"
+            image_path = os.path.join(mac_developer_dir, "DeveloperDiskImage.dmg")
+            signature_path = image_path + ".signature"
+            if os.path.isfile(image_path) and os.path.isfile(signature_path):
+                return mac_developer_dir
+        try:
+            image_path = get_developer_image_path(version)
+            return image_path
+        except (DownloadError, DeveloperImageError):
+            logger.debug("DeveloperImage not found: %s", version)
+            return None
 
     def _test_if_developer_mounted(self) -> bool:
         try:
@@ -645,7 +639,8 @@ class BaseDevice():
         Raises:
             MuxError, ServiceError
         """
-        if semver_compare(self.product_version, "16.0.0") >= 0:
+        product_version = self.get_value("ProductVersion")
+        if semver_compare(product_version, "16.0.0") >= 0:
             self.enable_ios16_developer_mode(reboot_ok=reboot_ok)
         try:
             if self.imagemounter.is_developer_mounted():
@@ -658,11 +653,23 @@ class BaseDevice():
             logger.info("DeviceLocked, but DeveloperImage already mounted")
             return
 
-        developer_img_dir = self._request_developer_image_dir()
-        image_path = os.path.join(developer_img_dir, "DeveloperDiskImage.dmg")
-        signature_path = image_path + ".signature"
-        self.imagemounter.mount(image_path, signature_path)
-        logger.info("DeveloperImage mounted successfully")
+        major, minor = product_version.split(".")[:2]
+        for guess_minor in range(int(minor), -1, -1):
+            version = f"{major}.{guess_minor}"
+            developer_img_dir = self._request_developer_image_dir(int(major), guess_minor)
+            if developer_img_dir:
+                image_path = os.path.join(developer_img_dir, "DeveloperDiskImage.dmg")
+                signature_path = image_path + ".signature"
+                try:
+                    self.imagemounter.mount(image_path, signature_path)
+                    logger.info("DeveloperImage %s mounted successfully", version)
+                    return
+                except MuxError as err:
+                    if "ImageMountFailed" in str(err):
+                        logger.info("DeveloperImage %s mount failed, try next version", version)
+                    else:
+                        raise ServiceError("ImageMountFailed")
+        raise ServiceError("DeveloperImage not found")
 
     @property
     def sync(self) -> Sync:
