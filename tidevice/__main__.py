@@ -33,7 +33,7 @@ from ._usbmux import Usbmux
 from ._utils import is_atty
 from ._version import __version__
 from ._wdaproxy import WDAService
-from .exceptions import MuxError, MuxServiceError, ServiceError
+from .exceptions import DownloadError, MuxError, MuxServiceError, ServiceError
 
 um: Usbmux = None  # Usbmux
 logger = logging.getLogger(__name__)
@@ -452,12 +452,12 @@ def cmd_crashreport(args: argparse.Namespace):
 
 def cmd_developer(args: argparse.Namespace):
     if args.download_all:
-        for major in range(7, 15):
-            for minor in range(0, 10):
+        for major in range(14, 17):
+            for minor in range(0, 7):
                 version = f"{major}.{minor}"
                 try:
                     cache_developer_image(version)
-                except requests.HTTPError:
+                except (requests.HTTPError, DownloadError):
                     break
         #     print("finish cache developer image {}".format(version))
     elif args.list:
