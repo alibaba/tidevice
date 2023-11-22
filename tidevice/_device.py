@@ -700,17 +700,21 @@ class BaseDevice():
 
     def app_start(self,
                   bundle_id: str,
-                  args: Optional[list] = [],
-                  kill_running: bool = True) -> int:
+                  args: Optional[list] = []) -> int:
         """
         start application
         
-        return pid
+        Args:
+            bundle_id: com.apple.Preferences
+            args: ['-AppleLanguages', '(en)']
 
-        Note: kill_running better to True, if set to False, launch 60 times will trigger instruments service stop
+        Returns:
+            pid
         """
+        if args is None:
+            args = []
         with self.connect_instruments() as ts:
-            return ts.app_launch(bundle_id, args=args, kill_running=kill_running)
+            return ts.app_launch(bundle_id, args=args)
 
     def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
         """

@@ -334,12 +334,13 @@ def cmd_applist(args: argparse.Namespace):
         #         info.get('Version', ''), info['Type'])))
 
 def cmd_energy(args: argparse.Namespace):
+    if args.kill:
+        logger.warning("kill is deprecated, kill is always True now")
+        
     d = _udid2device(args.udid)
     ts = d.connect_instruments()
     try:
-        pid = ts.app_launch(args.bundle_id,
-                                       args=args.arguments,
-                                       kill_running=args.kill)
+        pid = ts.app_launch(args.bundle_id, args=args.arguments)
         ts.start_energy_sampling(pid)
         while True:
             ret = ts.get_process_energy_stats(pid)
@@ -350,6 +351,9 @@ def cmd_energy(args: argparse.Namespace):
         sys.exit(e)
 
 def cmd_launch(args: argparse.Namespace):
+    if args.skip_running:
+        logger.warning("skip_running is deprecated, always kill app now")
+
     d = _udid2device(args.udid)
 
     env = {}
@@ -363,8 +367,7 @@ def cmd_launch(args: argparse.Namespace):
         with d.connect_instruments() as ts:
             pid = ts.app_launch(args.bundle_id,
                                         app_env=env,
-                                        args=args.arguments,
-                                        kill_running=not args.skip_running)
+                                        args=args.arguments)
             print("PID:", pid)
     except ServiceError as e:
         sys.exit(e)

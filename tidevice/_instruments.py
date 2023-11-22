@@ -688,8 +688,7 @@ class ServiceInstruments(DTXService):
     def app_launch(self,
                    bundle_id: str,
                    app_env: typing.Dict[str, str] = {},
-                   args: typing.List[str] = [],
-                   kill_running: bool = True) -> int:
+                   args: typing.List[str] = []) -> int:
         """
         Launch an app with bundle id
 
@@ -697,7 +696,6 @@ class ServiceInstruments(DTXService):
             bundle_id: bundle id of the app
             app_env: environment variables
             args: arguments
-            kill_running: deprecated argument, useless now
 
         Returns:
             pid of the app
