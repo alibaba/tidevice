@@ -256,6 +256,7 @@ def cmd_xcuitest(args: argparse.Namespace):
         # Use the default formatter that is a no-op formatter.
         setup_logger(LOG.xcuitest_test_process_log,
                      logfile=args.test_process_log_path,
+                     disableStderrLogger=True,  # Disable console logging.
                      level=log_level,
                      formatter=logging.Formatter())
 
@@ -264,6 +265,7 @@ def cmd_xcuitest(args: argparse.Namespace):
         # Use the default formatter that is a no-op formatter.
         setup_logger(LOG.xcuitest_test_output,
                      logfile=args.test_output_path,
+                     disableStderrLogger=True,  # Disable console logging.
                      level=log_level,
                      formatter=logging.Formatter())
 
