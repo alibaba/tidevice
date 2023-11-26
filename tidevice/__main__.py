@@ -252,18 +252,17 @@ def cmd_xcuitest(args: argparse.Namespace):
         setup_logger(LOG.xcuitest, level=logging.DEBUG)
 
     if args.log_dir:
+        logger.info('XCTest log directory: %s', args.log_dir)
         level = logging.DEBUG if args.debug else logging.INFO
         # Use the default formatter that is a no-op formatter.
-        setup_logger(
-            LOG.xcuitest_test_process_log,
-            logfile=os.path.join(args.log_dir, 'xctest_test_process.log'),
-            level=level,
-            formatter=logging.Formatter())
-        setup_logger(
-            LOG.xcuitest_test_output,
-            logfile=os.path.join(args.log_dir, 'xctest_test_output.log'),
-            level=level,
-            formatter=logging.Formatter())
+        setup_logger(LOG.xcuitest_test_process_log,
+                     logfile=os.path.join(args.log_dir, 'xctest_test_process.log'),
+                     level=level,
+                     formatter=logging.Formatter())
+        setup_logger(LOG.xcuitest_test_output,
+                     logfile=os.path.join(args.log_dir, 'xctest_test_output.log'),
+                     level=level,
+                     formatter=logging.Formatter())
 
     d = _udid2device(args.udid)
     env = {}
