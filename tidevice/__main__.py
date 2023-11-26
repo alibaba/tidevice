@@ -251,6 +251,20 @@ def cmd_xcuitest(args: argparse.Namespace):
     if args.debug:
         setup_logger(LOG.xcuitest, level=logging.DEBUG)
 
+    if args.log_dir:
+        level = logging.DEBUG if args.debug else logging.INFO
+        # Use the default formatter that is a no-op formatter.
+        setup_logger(
+            LOG.xcuitest_test_process_log,
+            logfile=os.path.join(args.log_dir, 'xctest_test_process.log'),
+            level=level,
+            formatter=logging.Formatter())
+        setup_logger(
+            LOG.xcuitest_test_output,
+            logfile=os.path.join(args.log_dir, 'xctest_test_output.log'),
+            level=level,
+            formatter=logging.Formatter())
+
     d = _udid2device(args.udid)
     env = {}
     for kv in args.env or []:
@@ -861,6 +875,8 @@ _commands = [
                  help="set command line args to target app with a comma-separated list of strings"),
             dict(args=['--tests-to-run'],
                  help="specify a set of test classes or test methods to run, format: a comma-separated list of Test-Class-Name[/Test-Method-Name]"),
+            dict(args=['--log_dir'],
+                 help='The directory to put XCUITest log files. If not specified, it will not generate log files.'),
         ],
         help="run XCTest (XCUITest)"),
     dict(
