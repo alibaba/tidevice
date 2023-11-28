@@ -2,7 +2,12 @@
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Publish Python 🐍 distributions 📦 to PyPI and TestPyPI
-on: push
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
 jobs:
   Release:
     name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
