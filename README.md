@@ -1,6 +1,7 @@
 ![tidevice](assets/tidevice-logo.png)
 ## tidevice
 
+![Github action status](https://github.com/alibaba/tidevice/actions/workflows/main.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
