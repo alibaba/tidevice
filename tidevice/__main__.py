@@ -251,20 +251,20 @@ def cmd_xcuitest(args: argparse.Namespace):
     log_level = logging.DEBUG if args.debug else logging.INFO
     setup_logger(LOG.xcuitest, level=log_level)
 
-    if args.test_process_log_path:
-        logger.info('XCUITest test process log file path: %s', args.test_process_log_path)
+    if args.process_log_path:
+        logger.info('XCUITest test process log file path: %s', args.process_log_path)
         # Use the default formatter that is a no-op formatter.
-        setup_logger(LOG.xcuitest_test_process_log,
-                     logfile=args.test_process_log_path,
+        setup_logger(LOG.xcuitest_process_log,
+                     logfile=args.process_log_path,
                      disableStderrLogger=True,  # Disable console logging.
                      level=log_level,
                      formatter=logging.Formatter())
 
-    if args.test_output_path:
-        logger.info('XCUITest test output file path: %s', args.test_output_path)
+    if args.console_log_path:
+        logger.info('XCUITest test output file path: %s', args.console_log_path)
         # Use the default formatter that is a no-op formatter.
-        setup_logger(LOG.xcuitest_test_output,
-                     logfile=args.test_output_path,
+        setup_logger(LOG.xcuitest_console_log,
+                     logfile=args.console_log_path,
                      disableStderrLogger=True,  # Disable console logging.
                      level=log_level,
                      formatter=logging.Formatter())
@@ -879,9 +879,9 @@ _commands = [
                  help="set command line args to target app with a comma-separated list of strings"),
             dict(args=['--tests-to-run'],
                  help="specify a set of test classes or test methods to run, format: a comma-separated list of Test-Class-Name[/Test-Method-Name]"),
-            dict(args=['--test_process_log_path'],
+            dict(args=['--process-log-path'],
                  help='The file path to store XCUITest test process logs. By default they are not stored to a file.'),
-            dict(args=['--test_output_path'],
+            dict(args=['--console-log-path'],
                  help='The file path to store XCUITest test output, e.g. UI activity summaries. By default they are not stored to a file.'),
         ],
         help="run XCTest (XCUITest)"),

@@ -46,8 +46,8 @@ from .exceptions import *
 from .session import Session
 
 logger = logging.getLogger(__name__)
-xctest_test_process_logger = logging.getLogger(LOG.xcuitest_test_process_log)
-xctest_test_output_logger = logging.getLogger(LOG.xcuitest_test_output)
+xcuitest_process_logger = logging.getLogger(LOG.xcuitest_process_log)
+xcuitest_console_logger = logging.getLogger(LOG.xcuitest_console_log)
 
 
 def pil_imread(data: Union[str, pathlib.Path, bytes, bytearray]) -> Image.Image:
@@ -944,7 +944,7 @@ class BaseDevice():
                     # XCTestOutputBarrier is just ouput separators, no need to
                     # print them in the logs.
                     if args[0].rstrip() != 'XCTestOutputBarrier':
-                        xctest_test_output_logger.debug('%s', args[0].rstrip())
+                        xcuitest_console_logger.debug('%s', args[0].rstrip())
                     # In low iOS versions, 'Using singleton test manager' may not be printed... mark wda launch status = True if server url has been printed
                     if "ServerURLHere" in args[0]:
                         logger.info("%s", args[0].rstrip())
@@ -954,11 +954,11 @@ class BaseDevice():
             identifier, args = m.result
             logger.debug("logConsole: %s", args)
             if isinstance(args, (tuple, list)):
-              for msg in args:
-                msg = msg.rstrip() if isinstance(msg, str) else msg
-                xctest_test_process_logger.debug('%s', msg)
+                for msg in args:
+                    msg = msg.rstrip() if isinstance(msg, str) else msg
+                    xcuitest_process_logger.debug('%s', msg)
             else:
-                xctest_test_process_logger.debug('%s', args)
+                xcuitest_process_logger.debug('%s', args)
 
 
         conn.register_callback("_XCT_logDebugMessage:", _log_message_callback)
@@ -1075,9 +1075,9 @@ class BaseDevice():
             if isinstance(m.result[1], (tuple, list)):
               for msg in m.result[1]:
                 msg = msg.rstrip() if isinstance(msg, str) else msg
-                xctest_test_process_logger.debug('%s', msg)
+                xcuitest_process_logger.debug('%s', msg)
             else:
-                xctest_test_process_logger.debug('%s', m.result[1])
+                xcuitest_process_logger.debug('%s', m.result[1])
 
         test_results = []
         test_results_lock = threading.Lock()
