@@ -6,6 +6,7 @@
 import struct
 from collections import namedtuple
 from functools import partial
+import typing
 
 
 class Field(object):
@@ -64,6 +65,7 @@ class Struct(object):
             if f.name in self._field_names:
                 raise ValueError("Struct has duplicated name", f.name)
             self._field_names.append(f.name)
+        self._size = sum([f.size for f in self._fields])
 
     @property
     def size(self):
@@ -75,6 +77,9 @@ class Struct(object):
         else:
             raise ValueError("Unknown type:", fvalue)
 
+    def parse_stream(self, reader: typing.BinaryIO):
+        return self.parse(reader.read(self.size))
+                          
     def parse(self, buffer: bytes):
         values = struct.unpack(self._fmt, buffer)
         return namedtuple(self._typename, self._field_names)(*values)

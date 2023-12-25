@@ -373,22 +373,14 @@ def cmd_launch(args: argparse.Namespace):
         logger.warning("skip_running is deprecated, always kill app now")
 
     d = _udid2device(args.udid)
-
     env = {}
     for kv in args.env or []:
         key, val = kv.split(":", 1)
         env[key] = val
     if env:
         logger.info("App launch env: %s", env)
-
-    try:
-        with d.connect_instruments() as ts:
-            pid = ts.app_launch(args.bundle_id,
-                                        app_env=env,
-                                        args=args.arguments)
-            print("PID:", pid)
-    except ServiceError as e:
-        sys.exit(e)
+    pid = d.app_start(args.bundle_id, args=args.arguments, env=env)
+    print("PID:", pid)
 
 
 def cmd_kill(args: argparse.Namespace):

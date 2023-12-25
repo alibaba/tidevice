@@ -194,7 +194,7 @@ class BaseDevice():
         wifi_address = self.get_value("WiFiAddress", no_session=True)
 
         try:
-            from ._ssl import make_certs_and_key
+            from ._ca import make_certs_and_key
         except ImportError:
             #print("DevicePair require pyOpenSSL and pyans1, install by the following command")
             #print("\tpip3 install pyOpenSSL pyasn1", flush=True)
@@ -702,13 +702,15 @@ class BaseDevice():
 
     def app_start(self,
                   bundle_id: str,
-                  args: Optional[list] = []) -> int:
+                  args: Optional[list] = [],
+                  env: typing.Mapping = {}) -> int:
         """
         start application
         
         Args:
             bundle_id: com.apple.Preferences
-            args: ['-AppleLanguages', '(en)']
+            args: eg ['-AppleLanguages', '(en)']
+            env: eg {'MYPATH': '/tmp'}
 
         Returns:
             pid
@@ -716,7 +718,7 @@ class BaseDevice():
         if args is None:
             args = []
         with self.connect_instruments() as ts:
-            return ts.app_launch(bundle_id, args=args)
+            return ts.app_launch(bundle_id, args=args, app_env=env)
 
     def app_install(self, file_or_url: Union[str, typing.IO]) -> str:
         """
