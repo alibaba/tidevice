@@ -20,10 +20,3 @@ simplejson
 tabulate
 logzero
 deprecation
-
-# hotfix for HTTPConnectino.request() get an unexpected keyword argument 'chunked'
-urllib3<2
-
-# hotfix for ValueError: Invalid version. The only valid version for X509Req is 0.
-# ref: https://github.com/certbot/certbot/issues/9722
-pyOpenSSL<23.2.0
