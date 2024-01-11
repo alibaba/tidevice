@@ -5,6 +5,13 @@
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
+## iOS17的支持通知
+本来想自己实现iOS17的支持，但是发现自己没这个实力，不过社区还是很强大的，目前发现了一个好项目能支持iOS17： pymobiledevice3，这个项目的代码写的非常好，因为太过优秀，我就不继续在tidevice里面去实现了。不过这个项目的命令行好像不太友好，所以我又搞了一个新项目
+
+https://github.com/codeskyblue/tidevice3
+
+基于pymobiledevice3做封装，封装了一些常用的功能，如app install uninstall screenshot。欢迎体验
+
 [English](README_EN.md)
 
 QQ交流群: _134535547_  (进群答案: 自己猜吧，不行就问gpt)

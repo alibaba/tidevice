@@ -4,6 +4,14 @@
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tidevice)](https://pypistats.org/search/tidevice)
 
+# iOS17 Support Notification
+I originally wanted to implement support for iOS17 myself, but I realized I didn't have the capability. However, the community is still very strong, and I've found a great project that supports iOS17: pymobiledevice3. The code in this project is written very well. Because it is so outstanding, I decided not to continue implementing it in tidevice.
+However, the command line interface of this project seems not very user-friendly, so I started a new project:
+
+https://github.com/codeskyblue/tidevice3
+
+This is based on pymobiledevice3 and wraps some common functionalities like app install, uninstall, and screenshot. You are welcome to try it out.
+
 [中文文档](README.md)
 
 Command line tool to communicate with iOS device, support the following functions
