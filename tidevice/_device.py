@@ -878,9 +878,7 @@ class BaseDevice():
         conn = self.connect_instruments()
         channel = conn.make_channel(InstrumentsService.ProcessControl)
 
-        conn.call_message(channel, "processIdentifierForBundleIdentifier:",
-                          [bundle_id])
-
+        conn.call_message(channel, "processIdentifierForBundleIdentifier:", [bundle_id])
         # launch app
         identifier = "launchSuspendedProcessWithDevicePath:bundleIdentifier:environment:arguments:options:"
         app_path = app_info['Path']
@@ -1111,7 +1109,7 @@ class BaseDevice():
 
         def _ready_with_caps_callback(m: DTXMessage):
             x2.send_dtx_message(m.channel_id,
-                              payload=DTXPayload.build_other(0x03, xctest_configuration),
+                              payload=DTXPayload.build_other(0x03),
                               message_id=m.message_id)
             
         x2.register_callback('_XCT_testRunnerReadyWithCapabilities:', _ready_with_caps_callback)

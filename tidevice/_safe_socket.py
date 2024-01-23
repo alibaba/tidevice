@@ -53,12 +53,19 @@ class SafeStreamSocket:
             addr: can be /var/run/usbmuxd or localhost:27015 or (localhost, 27015)
         """
         self._id = acquire_uid()
-        self._sock = None
         self._dup_sock = None # keep original sock when switch_to_ssl
         self._name = None
 
+        try:
+            self._sock = self._connect(addr)
+        except Exception as e:
+            raise SocketError("socket connect error") from e
+
+        self._finalizer = weakref.finalize(self, self._cleanup)
+    
+    def _connect(self, addr: Union[str, typing.Tuple[str, int], socket.socket, Any]):
         if isinstance(addr, socket.socket):
-            self._sock = addr
+            return addr
         else:
             if isinstance(addr, str):
                 if ':' in addr:
@@ -71,10 +78,9 @@ class SafeStreamSocket:
                     raise SocketError("socket unix:{} unable to connect".format(addr))
             else:
                 family = socket.AF_INET
-            self._sock = socket.socket(family, socket.SOCK_STREAM)
-            self._sock.connect(addr)
-
-        self._finalizer = weakref.finalize(self, self._cleanup)
+            sock = socket.socket(family, socket.SOCK_STREAM)
+            sock.connect(addr)
+            return sock
     
     def _cleanup(self):
         release_uid(self.id)
