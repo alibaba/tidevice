@@ -1109,7 +1109,7 @@ class BaseDevice():
 
         def _ready_with_caps_callback(m: DTXMessage):
             x2.send_dtx_message(m.channel_id,
-                              payload=DTXPayload.build_other(0x03),
+                              payload=DTXPayload.build_other(0x03, xctest_configuration),
                               message_id=m.message_id)
             
         x2.register_callback('_XCT_testRunnerReadyWithCapabilities:', _ready_with_caps_callback)
