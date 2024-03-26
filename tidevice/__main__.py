@@ -295,7 +295,7 @@ def cmd_xcuitest(args: argparse.Namespace):
     tests_to_run = set()
     if args.tests_to_run:
         tests_to_run = set(args.tests_to_run.strip().split(','))
-        logger.info("Target app args: %s", target_app_args)
+        logger.info("Tests to run: %s", tests_to_run)
 
     d.runwda(args.bundle_id,
              target_bundle_id=args.target_bundle_id,
