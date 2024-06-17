@@ -73,6 +73,9 @@ class UsbmuxAdapter(HTTPAdapter):
         self.pools = urllib3._collections.RecentlyUsedContainer(
             pool_connections, dispose_func=lambda p: p.close())
 
+    def get_connection_with_tls_context(self, request, verify=False, proxies=None, cert=None):
+        return self.get_connection(request.url, proxies)
+
     def get_connection(self, url, proxies=None):
         proxies = proxies or {}
         proxy = proxies.get(urlparse(url.lower()).scheme)
