@@ -1,5 +1,19 @@
-![tidevice](assets/tidevice-logo.png)
+# 项目暂停维护 Stop Maintained
+考虑到有很多更好的项目，另外该项目也没有实现对iOS17的支持，开发工作量太大，而我也没这么多的时间，所以本项目就暂停维护了。
+
+推荐项目 Alternatives
+
+- https://github.com/danielpaulus/go-ios
+- https://github.com/doronz88/pymobiledevice3
+- https://github.com/YueChen-C/py-ios-device
+
+虽然项目停了，不过QQ群还是正常开放，欢迎入群讨论。除了不能发广告和一些政治敏感信息，其他的交流还是很开放的。
+
+QQ交流群: _134535547_  (进群答案: 自己猜吧，不行就问gpt)
+
 ## tidevice
+![tidevice](assets/tidevice-logo.png)
+
 
 ![Github action status](https://github.com/alibaba/tidevice/actions/workflows/main.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/tidevice)](https://pypi.org/project/tidevice/)
