@@ -239,6 +239,7 @@ def iter_cpu_memory(d: BaseDevice, rp: RunningProcess) -> Iterator[Any]:
             "pid": minfo['pid'],
             "timestamp": gen_stimestamp(),
             "value": minfo['phys_memory'] / 1024 / 1024,  # MB
+            "rss_value": minfo['rss'] / 1024 / 1024,      # MB
         }
 
 
