@@ -4,10 +4,13 @@
 try:
     from importlib.metadata import version, PackageNotFoundError
 except ImportError:
-    import pkg_resources
-    def version(name):
-        return pkg_resources.get_distribution(name).version
-    PackageNotFoundError = pkg_resources.DistributionNotFound
+    try:
+        from importlib_metadata import version, PackageNotFoundError
+    except ImportError:
+        import pkg_resources
+        def version(name):
+            return pkg_resources.get_distribution(name).version
+        PackageNotFoundError = pkg_resources.DistributionNotFound
 
 from ._proto import PROGRAM_NAME
 try:
