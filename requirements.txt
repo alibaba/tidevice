@@ -20,3 +20,4 @@ simplejson
 tabulate
 logzero
 deprecation
+importlib-metadata; python_version < '3.8' 
